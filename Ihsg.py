@@ -7,7 +7,7 @@ import streamlit.components.v1 as components
 # ==========================================
 # --- KONFIGURASI HALAMAN ---
 # ==========================================
-st.set_page_config(page_title="Dashboard Analisis Teknikal Pro", layout="wide")
+st.set_page_config(page_title="Dashboard Analisis Teknikal God-Tier", layout="wide")
 
 st.markdown("""
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -19,18 +19,26 @@ header { visibility: hidden; }
 
 
 # ==========================================
-# --- PANEL KONTROL (TETAP DI DEPAN) ---
+# --- PANEL KONTROL (GOD-TIER VERSION) ---
 # ==========================================
-st.markdown("### ⚙️ PANEL KONTROL (PRO VERSION)")
-col_in1, col_in2 = st.columns(2)
+st.markdown("### ⚙️ PANEL KONTROL (GOD-TIER VERSION)")
+
+# Dibagi menjadi 3 kolom agar rapi di HP maupun PC
+col_in1, col_in2, col_in3 = st.columns(3)
 
 with col_in1:
-    ticker_input = st.text_input("🔍 Kode Saham (Ketik & Enter):", "BBCA").upper().strip()
+    ticker_input = st.text_input("🔍 1. Kode Saham:", "BBCA", help="Ketik kode lalu Enter").upper().strip()
 
 with col_in2:
     status_bandar = st.selectbox(
-        "🕵️‍♂️ Status Bandar (Manual):", 
+        "🕵️‍♂️ 2. Bandarmology (Manual):", 
         ["Akumulasi (Net Buy)", "Netral / Sepi", "Distribusi (Net Sell)"]
+    )
+
+with col_in3:
+    status_bidoffer = st.selectbox(
+        "⚖️ 3. Bid & Offer (Manual):", 
+        ["Dominan BID (Demand Kuat)", "Berimbang (Normal)", "Dominan OFFER (Supply Kuat)"]
     )
 
 ticker_yf = f"{ticker_input}.JK"
@@ -39,7 +47,7 @@ st.markdown("---")
 
 
 # ==========================================
-# --- MESIN KALKULASI DEWA (FIBONACCI + TEKNIKAL) ---
+# --- MESIN KALKULASI DEWA (5 DIMENSI) ---
 # ==========================================
 @st.cache_data(ttl=300)
 def get_stock_data(ticker_symbol):
@@ -78,11 +86,11 @@ def get_stock_data(ticker_symbol):
         elif rsi_val <= 30: rsi_status = "Oversold"
         else: rsi_status = "Netral"
         
-        # BASIC SUPPORT & RESISTANCE (20 Days)
+        # SUPPORT & RESISTANCE (20 Days)
         res_terdekat = hist['High'].tail(20).max()
         sup_terdekat = hist['Low'].tail(20).min()
         
-        # 🔥 FIBONACCI RETRACEMENT LOGIC (60 Days Swing) 🔥
+        # FIBONACCI RETRACEMENT LOGIC (60 Days Swing)
         swing_high = hist['High'].tail(60).max()
         swing_low = hist['Low'].tail(60).min()
         diff = swing_high - swing_low
@@ -91,7 +99,6 @@ def get_stock_data(ticker_symbol):
         fibo_382 = swing_high - (0.382 * diff)
         fibo_618 = swing_high - (0.618 * diff) # Golden Ratio
         
-        # Hitung Skor Fibo
         if latest_price >= fibo_382:
             fibo_stat = "Bullish (> Fibo 38.2%)"
             fibo_score = 2
@@ -114,24 +121,30 @@ def get_stock_data(ticker_symbol):
 
 data = get_stock_data(ticker_yf)
 if data is None:
-    st.error(f"❌ Saham **{ticker_input}** tidak ditemukan atau data kurang (minimal butuh historis 60 hari). Coba saham bluechip lain.")
+    st.error(f"❌ Saham **{ticker_input}** tidak valid atau data kurang. Coba saham Bluechip/Liquid.")
     st.stop()
 
 
 # ==========================================
-# --- ALGORITMA PENILAIAN HIBRIDA (MAX SCORE 10) ---
+# --- ALGORITMA PENILAIAN 5 DIMENSI (MAX 10) ---
 # ==========================================
 score = 0
-# 1. Tren Teknikal (Max 3)
-if data['trend'] == "Bullish": score += 3
-# 2. RSI Momentum (Max 2)
-if data['rsi_status'] == "Netral": score += 2
-elif data['rsi_status'] == "Oversold": score += 2
-# 3. Bandarmology (Max 3)
+# 1. Tren Teknikal (Max 2)
+if data['trend'] == "Bullish": score += 2
+
+# 2. RSI Momentum (Max 1)
+if data['rsi_status'] in ["Netral", "Oversold"]: score += 1
+
+# 3. Fibonacci (Max 2)
+score += data['fibo_score']
+
+# 4. Bandarmology Manual (Max 3)
 if "Akumulasi" in status_bandar: score += 3
 elif "Netral" in status_bandar: score += 1
-# 4. Fibonacci (Max 2)
-score += data['fibo_score']
+
+# 5. Orderbook Bid/Offer Manual (Max 2)
+if "BID" in status_bidoffer: score += 2
+elif "Berimbang" in status_bidoffer: score += 1
 
 
 # ==========================================
@@ -144,10 +157,10 @@ today_date = datetime.datetime.now().strftime("%d %B %Y")
 col_h1, col_h2, col_h3 = st.columns([2, 1.2, 1.3])
 
 with col_h1:
-    st.markdown(f"📊 **ANALISIS TEKNIKAL**")
+    st.markdown(f"📊 **ANALISIS TEKNIKAL PRO**")
     st.markdown(f"<h1 style='font-size: 3.2rem; margin-bottom: 0;'>{ticker_input}</h1>", unsafe_allow_html=True)
     st.markdown(f"**{data['name']}**")
-    st.caption("AI + Fibo System + Manual Bandarmology")
+    st.caption("AI + Fibo + Bandar + Orderbook (5D System)")
     st.info(f"Update {today_date} | Close Rp{int(data['price'])}")
 
 with col_h2:
@@ -183,7 +196,7 @@ col_chart, col_plan = st.columns([2, 1])
 
 with col_chart:
     tradingview_html = f"""
-    <div style="border-radius: 8px; border: 1px solid #e5e7eb; overflow: hidden; background: white;">
+    <div style="border-radius: 8px; border: 1px solid #374151; overflow: hidden; background: #111827;">
         <div class="tradingview-widget-container" style="height: 400px; width: 100%;">
           <div id="tradingview_chart" style="height: 100%; width: 100%;"></div>
           <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
@@ -193,7 +206,7 @@ with col_chart:
             "symbol": "{ticker_tv}",
             "interval": "D",
             "timezone": "Asia/Jakarta",
-            "theme": "light",
+            "theme": "dark",
             "style": "1",
             "locale": "id",
             "enable_publishing": false,
@@ -211,19 +224,19 @@ with col_chart:
 
 with col_plan:
     with st.container(border=True):
-        st.markdown("💰 **TRADE PLAN (Sistem Sinyal Fibo)**")
+        st.markdown("💰 **TRADE PLAN (God-Tier Signal)**")
         if score >= 8:
-            st.markdown(f"🟢 **Entry:** Hajar Beli / Cicil Bertahap di harga saat ini")
+            st.markdown(f"🟢 **Entry:** Hajar Beli / HK di harga saat ini")
         elif score >= 5:
-            st.markdown(f"🟡 **Entry:** Tunggu Re-test Golden Ratio di Rp{int(data['fibo_618'])}")
+            st.markdown(f"🟡 **Entry:** Antre Beli di Support (Rp{int(data['sup'])})")
         else:
-            st.markdown("🔴 **Entry:** JANGAN BELI (Trend Hancur)")
+            st.markdown("🔴 **Entry:** JANGAN BELI (Sinyal Buruk)")
             
-        st.markdown(f"🔴 **Stop Loss:** Jika break Rp{int(data['sup'])}")
+        st.markdown(f"🔴 **Stop Loss:** Jika jebol Rp{int(data['sup'])}")
         st.divider()
         st.markdown("🎯 **TARGET HARGA**")
         st.markdown(f"🥇 **TP 1 (Resist):** Rp{int(data['res'])}")
-        st.markdown(f"🚀 **TP 2 (Fibo Swing):** Rp{int(data['swing_high'])}")
+        st.markdown(f"🚀 **TP 2 (Swing Fibo):** Rp{int(data['swing_high'])}")
         
         reward = int(data['res']) - int(data['price'])
         risk = int(data['price']) - int(data['sup'])
@@ -249,14 +262,18 @@ with col_b1:
             st.error(f"Status: **{data['trend']}**")
     
     with st.container(border=True):
-        st.markdown("🏛️ **BANDARMOLOGY (MANUAL)**")
-        st.caption("Penggerak Harga:")
-        if "Akumulasi" in status_bandar:
-            st.success(f"✔️ Bandar **{status_bandar}**")
-        elif "Distribusi" in status_bandar:
-            st.error(f"❌ Bandar **{status_bandar}**")
-        else:
-            st.warning(f"➖ Bandar **{status_bandar}**")
+        st.markdown("🏦 **BANDAR & ORDERBOOK**")
+        st.caption("Hasil Pantauan Manual Anda:")
+        
+        # Bandar
+        if "Akumulasi" in status_bandar: st.success(f"✔️ Bandar: **Akumulasi**")
+        elif "Distribusi" in status_bandar: st.error(f"❌ Bandar: **Distribusi**")
+        else: st.warning(f"➖ Bandar: **Netral**")
+        
+        # Bid Offer
+        if "BID" in status_bidoffer: st.success(f"✔️ Orderbook: **Dominan BID** (Antrean Beli Tebal)")
+        elif "OFFER" in status_bidoffer: st.error(f"❌ Orderbook: **Dominan OFFER** (Antrean Jual Tebal)")
+        else: st.warning(f"➖ Orderbook: **Berimbang**")
 
 with col_b2:
     with st.container(border=True):
@@ -268,17 +285,17 @@ with col_b2:
     with st.container(border=True):
         st.markdown("⭐ **KESIMPULAN SINYAL BESOK**")
         if score >= 8:
-            st.info(f"🔥 **{ticker_input} SANGAT POTENSIAL**")
-            st.markdown("Teknikal Aman, Bandar Masuk, Posisi Fibo Kuat. Layak Hajar Kanan!")
-        elif data['trend'] == "Bearish" and "Akumulasi" in status_bandar:
-            st.success(f"🎣 **POTENSI REVERSAL {ticker_input}**")
-            st.markdown("Harga turun menyentuh Fibo Support tapi Bandar Akumulasi diam-diam. Cicil beli bawah.")
+            st.info(f"🔥 **{ticker_input} SIAP TERBANG**")
+            st.markdown("Teknikal Bullish, Bandar Akumulasi, dan Demand (Bid) sangat kuat!")
+        elif score >= 5 and "BID" in status_bidoffer:
+            st.success(f"🎣 **POTENSI REBOUND {ticker_input}**")
+            st.markdown("Meski tertahan, antrean Beli (Bid) tebal. Bandar mulai serok bawah.")
         elif score >= 5:
             st.warning(f"⚠️ **PANTAU KETAT {ticker_input}**")
-            st.markdown("Sinyal campur aduk. Pantau pantulan harga di area Fibo 61.8% besok.")
+            st.markdown("Sinyal belum bulat. Pantau reaksi harga di Golden Ratio Fibo besok.")
         else:
-            st.error(f"💀 **HINDARI {ticker_input} SEMENTARA**")
-            st.markdown("Trend Turun, Bandar Guyur, Fibo Jebol. Risiko nyangkut sangat tinggi.")
+            st.error(f"💀 **JAUHI {ticker_input} SEMENTARA**")
+            st.markdown("Trend patah, Bandar buang barang, Offer tebal. Awas nyangkut!")
 
 with col_b3:
     with st.container(border=True):
@@ -298,18 +315,28 @@ with col_b3:
 
 
 # ==========================================
-# --- 4. PUSAT DATA PASAR (SCANNER) ---
+# --- 4. PUSAT DATA PASAR ELEGAN (DARK MODE) ---
 # ==========================================
 st.markdown("<br><hr>", unsafe_allow_html=True)
 st.markdown("### 📊 Pusat Data Pasar (IHSG)")
 tab_movers, tab_screener = st.tabs(["🔥 Top Movers & Trending", "🔎 Advanced Stock Scanner"])
 
 with tab_movers:
+    # PERBAIKAN TAMPILAN: colorTheme diset ke "dark", isTransparent "true", showChart "false"
     components.html("""
     <div class="tradingview-widget-container" style="height: 500px; width: 100%;">
       <div class="tradingview-widget-container__widget" style="height: 100%; width: 100%;"></div>
       <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-hotlists.js" async>
-      { "colorTheme": "light", "dateRange": "12M", "exchange": "IDX", "showChart": false, "locale": "id", "width": "100%", "height": "100%", "isTransparent": true }
+      {
+      "colorTheme": "dark",
+      "dateRange": "12M",
+      "exchange": "IDX",
+      "showChart": false,
+      "locale": "id",
+      "width": "100%",
+      "height": "100%",
+      "isTransparent": true
+      }
       </script>
     </div>
     """, height=500)
@@ -319,7 +346,17 @@ with tab_screener:
     <div class="tradingview-widget-container" style="height: 600px; width: 100%;">
       <div class="tradingview-widget-container__widget" style="height: 100%; width: 100%;"></div>
       <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>
-      { "width": "100%", "height": "100%", "defaultColumn": "overview", "defaultScreen": "general", "market": "indonesia", "showToolbar": true, "colorTheme": "light", "locale": "id", "isTransparent": true }
+      {
+      "width": "100%",
+      "height": "100%",
+      "defaultColumn": "overview",
+      "defaultScreen": "general",
+      "market": "indonesia",
+      "showToolbar": true,
+      "colorTheme": "dark",
+      "locale": "id",
+      "isTransparent": true
+      }
       </script>
     </div>
     """, height=600)

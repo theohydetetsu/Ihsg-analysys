@@ -13,8 +13,8 @@ st.set_page_config(page_title="HOLY GRAIL - Technical Dashboard", layout="wide")
 st.markdown("""<style>
 .block-container {padding-top: 1rem !important; padding-bottom: 1rem !important;}
 header {visibility: hidden;}
-div[data-testid="stVerticalBlockBorderWrapper"] {background-color: #111827 !important; border: 1px solid #374151 !important; border-radius: 10px !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3) !important; padding: 0.8rem !important;}
-p, span, li, div.stMarkdown, .stText {font-size: 0.8rem !important; line-height: 1.5 !important;}
+div[data-testid="stVerticalBlockBorderWrapper"] {background-color: #111827 !important; border: 1px solid #374151 !important; border-radius: 12px !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4) !important; padding: 0.8rem !important;}
+p, span, li, div.stMarkdown, .stText {font-size: 0.85rem !important; line-height: 1.5 !important;}
 hr {margin-top: 0.8rem; margin-bottom: 0.8rem; border-color: #374151;}
 </style>""", unsafe_allow_html=True)
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', unsafe_allow_html=True)
@@ -156,49 +156,53 @@ if max_lot < 1: max_lot = 0
 
 
 # ==========================================
-# --- 1. HEADER DASHBOARD (DIPERBESAR MAKSIMAL) ---
+# --- 1. HEADER DASHBOARD (SUPER RAKSASA & JAM UPDATE) ---
 # ==========================================
 arrow = "▼" if data['change'] < 0 else "▲"
 color = "#f87171" if data['change'] < 0 else "#4ade80" 
-today_date = datetime.datetime.now().strftime("%d %B %Y")
+# Format Tanggal + Jam Menit
+now = datetime.datetime.now()
+today_time_str = now.strftime("%d %B %Y, %H:%M WIB") 
 
 logo_url = f"https://assets.parqet.com/logos/symbol/{ticker_input}.JK?format=png"
 
-col_h1, col_h2, col_h3 = st.columns([2, 1.2, 1.3])
+col_h1, col_h2, col_h3 = st.columns([1.8, 1.4, 1.8])
 
 with col_h1:
     st.markdown("<span style='font-size: 0.95rem; color:#9ca3af; font-weight:bold; letter-spacing: 1px;'>HOLY GRAIL SYSTEM</span>", unsafe_allow_html=True)
+    # Teks Emiten Super Besar menggunakan murni inline CSS style agar tidak ditimpa Streamlit
     st.markdown(f"""<div style="display: flex; align-items: center; gap: 15px; margin-top: 5px; margin-bottom: 5px;">
-    <img src="{logo_url}" width="65" height="65" style="border-radius: 12px; background: white; padding: 4px;" onerror="this.style.display='none'">
-    <h1 style='color:#f3f4f6; font-size: 4.5rem !important; margin: 0; line-height: 1;'>{ticker_input}</h1>
+    <img src="{logo_url}" width="70" height="70" style="border-radius: 12px; background: white; padding: 4px;" onerror="this.style.display='none'">
+    <div style='color:#f3f4f6; font-size: 4rem; font-weight: 900; line-height: 1;'>{ticker_input}</div>
     </div>""", unsafe_allow_html=True)
-    st.markdown(f"<span style='color:#d1d5db; font-size:1.2rem; font-weight:bold;'>{data['name']}</span>", unsafe_allow_html=True)
-    st.markdown(f"<div style='font-size:0.9rem; color:#60a5fa; margin-top: 6px;'>Update {today_date} | Close Rp{int(data['price'])}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='color:#d1d5db; font-size:1.15rem; font-weight:bold;'>{data['name']}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='font-size:0.9rem; color:#60a5fa; margin-top: 6px; font-weight: bold;'>Update {today_time_str}</div>", unsafe_allow_html=True)
 
 with col_h2:
-    st.markdown("<div style='text-align: center; margin-top: 10px;'>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center; margin-top: 15px;'>", unsafe_allow_html=True)
     if score >= 8:
-        st.markdown("<span style='color:#4ade80; font-size: 1.4rem; font-weight:bold;'>STRONG BUY</span><br><span style='font-size: 1.4rem;'>⭐⭐⭐⭐⭐</span>", unsafe_allow_html=True)
+        st.markdown("<div style='color:#4ade80; font-size: 1.8rem; font-weight:900;'>STRONG BUY</div><div style='font-size: 1.5rem;'>⭐⭐⭐⭐⭐</div>", unsafe_allow_html=True)
     elif score >= 5:
-        st.markdown("<span style='color:#fbbf24; font-size: 1.4rem; font-weight:bold;'>HOLD / WAIT</span><br><span style='font-size: 1.4rem;'>⭐⭐⭐</span>", unsafe_allow_html=True)
+        st.markdown("<div style='color:#fbbf24; font-size: 1.8rem; font-weight:900;'>HOLD / WAIT</div><div style='font-size: 1.5rem;'>⭐⭐⭐</div>", unsafe_allow_html=True)
     else:
-        st.markdown("<span style='color:#f87171; font-size: 1.4rem; font-weight:bold;'>SELL / AVOID</span><br><span style='font-size: 1.4rem;'>⭐</span>", unsafe_allow_html=True)
-    st.markdown(f"<h2 style='color:#fbbf24; font-size: 3rem !important; margin: 5px 0 0 0;'>🌟 {score}.0 <span style='font-size:1.2rem; color:#9ca3af;'>/10</span></h2>", unsafe_allow_html=True)
+        st.markdown("<div style='color:#f87171; font-size: 1.8rem; font-weight:900;'>SELL / AVOID</div><div style='font-size: 1.5rem;'>⭐</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='color:#fbbf24; font-size: 2.8rem; font-weight: 900; margin-top: 5px;'>🌟 {score}.0 <span style='font-size:1.4rem; color:#9ca3af;'>/10</span></div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 with col_h3:
-    st.markdown("<div style='text-align: right; margin-top: 10px;'>", unsafe_allow_html=True)
-    st.markdown("<span style='color:#9ca3af; font-size:0.95rem; font-weight:bold;'>HARGA PENUTUPAN</span>", unsafe_allow_html=True)
-    st.markdown(f"<h2 style='color:#f3f4f6; font-size: 3.5rem !important; margin: 0; line-height: 1.1;'>Rp{int(data['price'])}</h2>", unsafe_allow_html=True)
-    st.markdown(f"<span style='color: {color}; font-size: 1.3rem; font-weight: bold;'>{arrow} {data['change']:.2f}%</span>", unsafe_allow_html=True)
-    st.markdown(f"<div style='margin-top: 8px;'><span style='color:#9ca3af; font-size:0.85rem;'>DIVIDEND YIELD:</span> <span style='color:#f3f4f6; font-weight:bold; font-size:1rem;'>{round(data['div'], 2) if isinstance(data['div'], (int, float)) else 'N/A'}%</span></div>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align: right; margin-top: 15px;'>", unsafe_allow_html=True)
+    st.markdown("<div style='color:#9ca3af; font-size:0.95rem; font-weight:bold;'>HARGA PENUTUPAN</div>", unsafe_allow_html=True)
+    # Harga Penutupan Super Besar
+    st.markdown(f"<div style='color:#f3f4f6; font-size: 3.8rem; font-weight: 900; line-height: 1.1;'>Rp{int(data['price'])}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='color: {color}; font-size: 1.4rem; font-weight: bold;'>{arrow} {data['change']:.2f}%</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='margin-top: 8px;'><span style='color:#9ca3af; font-size:0.9rem;'>DIVIDEND YIELD:</span> <span style='color:#f3f4f6; font-weight:bold; font-size:1.1rem;'>{round(data['div'], 2) if isinstance(data['div'], (int, float)) else 'N/A'}%</span></div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 st.divider()
 
 
 # ==========================================
-# --- 2. CHART (FULL WIDTH - RATA KANAN KIRI) ---
+# --- 2. CHART (FULL WIDTH) ---
 # ==========================================
 tradingview_html = f"""
 <div style="border-radius: 10px; border: 1px solid #374151; overflow: hidden; background: #111827; margin-bottom: 15px;">
@@ -229,72 +233,73 @@ components.html(tradingview_html, height=430)
 
 
 # ==========================================
-# --- 3. KOTAK ANALISA (6 KOTAK PRESISI TOTAL 270px) ---
+# --- 3. KOTAK ANALISA (ELEGAN & FONT BESAR KONTRAST) ---
 # ==========================================
-# Persiapan Variabel HTML agar anti-error
-if score >= 8: entry_html = f"<span style='color:#4ade80;'><strong>Entry:</strong> Hajar Beli di Rp{int(data['price'])}</span>"
-elif score >= 5: entry_html = f"<span style='color:#fbbf24;'><strong>Entry:</strong> Antre di Support Rp{int(data['sup'])}</span>"
-else: entry_html = "<span style='color:#f87171;'><strong>Entry:</strong> JANGAN BELI (Wait & See)</span>"
+# Merakit Isi Analisa
+if score >= 8: entry_html = f"<span style='color:#4ade80;'>Entry di <strong><span style='font-size:1.15rem;'>Rp{int(data['price'])}</span></strong></span>"
+elif score >= 5: entry_html = f"<span style='color:#fbbf24;'>Antre Support di <strong><span style='font-size:1.15rem;'>Rp{int(data['sup'])}</span></strong></span>"
+else: entry_html = "<span style='color:#f87171; font-weight:bold;'>JANGAN BELI (Wait & See)</span>"
 
 reward = int(data['res']) - int(data['price'])
 rr_html = ""
 if risk_per_share > 0 and reward > 0:
-    rr_html = f"<div style='background:#1e3a8a; color:white; padding:6px; border-radius:6px; text-align:center; font-weight:bold; font-size:0.75rem; margin-top: 8px;'>⚖️ Risk : Reward = 1 : {round(reward / risk_per_share, 1)}</div>"
+    rr_html = f"<div style='background:#1e3a8a; color:white; padding:8px; border-radius:6px; text-align:center; font-weight:bold; font-size:0.85rem; margin-top: 12px;'>⚖️ Risk : Reward = 1 : {round(reward / risk_per_share, 1)}</div>"
 
 if max_lot > 0 and score >= 5:
-    mm_html = f"<div style='background:#065f46; color:#a7f3d0; padding:10px; border-radius:6px; text-align:center;'>🛒 MAKSIMAL BELI:<br><strong style='font-size:1.6rem;'>{max_lot} LOT</strong></div>"
+    mm_html = f"<div style='background:#065f46; color:#a7f3d0; padding:12px; border-radius:8px; text-align:center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5);'>🛒 MAKSIMAL BELI:<br><div style='font-size:2.2rem; font-weight:900; line-height:1.2; margin-top:5px;'>{max_lot} LOT</div></div>"
 else:
-    mm_html = "<div style='background:#7f1d1d; color:#fca5a5; padding:10px; border-radius:6px; text-align:center;'>🚫 KONDISI TIDAK AMAN UNTUK BUY</div>"
+    mm_html = "<div style='background:#7f1d1d; color:#fca5a5; padding:12px; border-radius:8px; text-align:center; font-weight:bold; font-size:1.1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5);'>🚫 KONDISI TIDAK AMAN<br>UNTUK ENTRY</div>"
 
-if "SQUEEZE" in data['bb_stat']: bb_html = f"<span style='color:#f87171; font-weight:bold;'>{data['bb_stat']}</span>"
-else: bb_html = f"<span style='color:#4ade80;'>{data['bb_stat']}</span>"
+if "SQUEEZE" in data['bb_stat']: bb_html = f"<span style='color:#f87171; font-weight:bold; font-size:1.05rem;'>{data['bb_stat']}</span>"
+else: bb_html = f"<span style='color:#4ade80; font-weight:bold; font-size:1.05rem;'>{data['bb_stat']}</span>"
 
-if "Akumulasi" in status_bandar: bandar_html = "✔️ Bandar: <strong><span style='color:#4ade80;'>Akumulasi</span></strong>"
-elif "Distribusi" in status_bandar: bandar_html = "❌ Bandar: <strong><span style='color:#f87171;'>Distribusi</span></strong>"
-else: bandar_html = "➖ Bandar: <strong><span style='color:#fbbf24;'>Netral</span></strong>"
+if "Akumulasi" in status_bandar: bandar_html = "Bandar: <span style='color:#4ade80; font-weight:bold; font-size:1.05rem;'>Akumulasi Massal</span>"
+elif "Distribusi" in status_bandar: bandar_html = "Bandar: <span style='color:#f87171; font-weight:bold; font-size:1.05rem;'>Distribusi Kuat</span>"
+else: bandar_html = "Bandar: <span style='color:#fbbf24; font-weight:bold; font-size:1.05rem;'>Netral / Sepi</span>"
 
-if "BID" in status_bidoffer: bo_html = "✔️ Bid/Offer: <strong><span style='color:#4ade80;'>Dominan BID</span></strong>"
-elif "OFFER" in status_bidoffer: bo_html = "❌ Bid/Offer: <strong><span style='color:#f87171;'>Dominan OFFER</span></strong>"
-else: bo_html = "➖ Bid/Offer: <strong><span style='color:#fbbf24;'>Berimbang</span></strong>"
+if "BID" in status_bidoffer: bo_html = "Bid/Offer: <span style='color:#4ade80; font-weight:bold; font-size:1.05rem;'>Dominan BID</span>"
+elif "OFFER" in status_bidoffer: bo_html = "Bid/Offer: <span style='color:#f87171; font-weight:bold; font-size:1.05rem;'>Dominan OFFER</span>"
+else: bo_html = "Bid/Offer: <span style='color:#fbbf24; font-weight:bold; font-size:1.05rem;'>Berimbang</span>"
 
 vpa_bg = "#065f46; color:#a7f3d0;" if data['vpa_score'] == 1 else "#78350f; color:#fde68a;"
-vpa_html = f"<div style='background:{vpa_bg}; padding:5px 8px; border-radius:4px; display:inline-block;'>📊 VPA: {data['vpa_stat']}</div>"
+vpa_html = f"<div style='background:{vpa_bg}; padding:6px 12px; border-radius:6px; margin-top:12px; display:inline-block; font-weight:bold; font-size:1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);'>📊 VPA: {data['vpa_stat']}</div>"
 
-if score >= 8 and "SQUEEZE" in data['bb_stat']: kesimpulan_html = f"🌋 <span style='font-size:1.1rem; font-weight:bold; color:#f3f4f6;'>JACKPOT! {ticker_input} SIAP MELEDAK</span><br><span style='color:#a3a8b4;'>Hajar Kanan sekarang!</span>"
-elif score >= 8: kesimpulan_html = f"🔥 <span style='font-size:1.1rem; font-weight:bold; color:#f3f4f6;'>{ticker_input} SANGAT POTENSIAL</span><br><span style='color:#a3a8b4;'>Bullish & Akumulasi!</span>"
-elif score >= 5: kesimpulan_html = f"⚠️ <span style='font-size:1.1rem; font-weight:bold; color:#f3f4f6;'>PANTAU KETAT {ticker_input}</span><br><span style='color:#a3a8b4;'>Cicil di area Support.</span>"
-else: kesimpulan_html = f"💀 <span style='font-size:1.1rem; font-weight:bold; color:#f3f4f6;'>JAUHI {ticker_input} SEMENTARA</span><br><span style='color:#a3a8b4;'>Trend patah / Distribusi.</span>"
+if score >= 8 and "SQUEEZE" in data['bb_stat']: kesimpulan_html = f"🌋<br><div style='font-size:1.4rem; font-weight:900; color:#4ade80; margin: 10px 0;'>JACKPOT!<br>{ticker_input} SIAP MELEDAK</div><span style='color:#a3a8b4; font-size:1rem;'>Sinyal sempurna, Hajar Kanan!</span>"
+elif score >= 8: kesimpulan_html = f"🔥<br><div style='font-size:1.4rem; font-weight:900; color:#4ade80; margin: 10px 0;'>{ticker_input}<br>SANGAT POTENSIAL</div><span style='color:#a3a8b4; font-size:1rem;'>Teknikal Bullish & Akumulasi.</span>"
+elif score >= 5: kesimpulan_html = f"⚠️<br><div style='font-size:1.4rem; font-weight:900; color:#fbbf24; margin: 10px 0;'>PANTAU KETAT<br>{ticker_input}</div><span style='color:#a3a8b4; font-size:1rem;'>Sinyal Netral, Cicil di Support.</span>"
+else: kesimpulan_html = f"💀<br><div style='font-size:1.4rem; font-weight:900; color:#f87171; margin: 10px 0;'>JAUHI {ticker_input}<br>SEMENTARA</div><span style='color:#a3a8b4; font-size:1rem;'>Trend patah / Sedang Distribusi.</span>"
+
 shares_str = f"{data['shares'] / 1e9:.2f} Miliar Lembar" if data['shares'] != "N/A" else "Tidak diketahui"
 
-# Merakit HTML Kotak (Dipaksa Tinggi 270px persis pakai Flexbox)
+# Merakit Kotak HTML (Tinggi 270px)
 box1 = f"""<div style='height: 270px; display: flex; flex-direction: column;'>
-<div><span style='font-size: 0.95rem; font-weight: bold;'>💰 TRADE PLAN</span><br><hr style='margin: 8px 0; border-color:#374151;'>{entry_html}<br><span style='color:#f87171;'><strong>Stop Loss:</strong> Jika jebol Rp{int(data['sup'])}</span></div>
-<div style='margin-top: auto;'><hr style='margin: 8px 0; border-color:#374151;'>🎯 <strong>TARGET HARGA</strong><br>🥇 <strong>TP 1 (Resist):</strong> Rp{int(data['res'])}<br>🚀 <strong>TP 2 (Swing):</strong> Rp{int(data['swing_high'])}<br>{rr_html}</div>
+<div><span style='font-size: 1rem; font-weight: bold;'>💰 TRADE PLAN</span><br><hr style='margin: 8px 0; border-color:#374151;'><strong>Entry:</strong> {entry_html}<br><span style='color:#f87171;'><strong>Stop Loss:</strong> Jika jebol <span style='font-size:1.05rem; font-weight:bold;'>Rp{int(data['sup'])}</span></span></div>
+<div style='margin-top: auto;'><hr style='margin: 8px 0; border-color:#374151;'>🎯 <strong>TARGET HARGA</strong><br>🥇 <strong>TP 1 (Resist):</strong> <span style='font-size:1.05rem; font-weight:bold; color:#f3f4f6;'>Rp{int(data['res'])}</span><br>🚀 <strong>TP 2 (Swing):</strong> <span style='font-size:1.05rem; font-weight:bold; color:#f3f4f6;'>Rp{int(data['swing_high'])}</span><br>{rr_html}</div>
 </div>""".replace('\n', '')
 
 box2 = f"""<div style='height: 270px; display: flex; flex-direction: column;'>
-<div><span style='font-size: 0.95rem; font-weight: bold;'>🛡️ MONEY MANAGEMENT</span><br><hr style='margin: 8px 0; border-color:#374151;'>Berdasarkan Modal: <strong>Rp{modal_input:,.0f}</strong><br>Risiko Cutloss: <strong>{risk_pct*100}%</strong> (Rp{max_loss_rp:,.0f})</div>
+<div><span style='font-size: 1rem; font-weight: bold;'>🛡️ MONEY MANAGEMENT</span><br><hr style='margin: 8px 0; border-color:#374151;'><span style='color:#9ca3af;'>Berdasarkan Modal:</span> <strong style='font-size:1.05rem;'>Rp{modal_input:,.0f}</strong><br><span style='color:#9ca3af;'>Risiko Cutloss:</span> <strong style='font-size:1.05rem;'>{risk_pct*100}%</strong> <span style='color:#f87171;'>(Rp{max_loss_rp:,.0f})</span></div>
 <div style='margin-top: auto;'>{mm_html}</div>
 </div>""".replace('\n', '')
 
 box3 = f"""<div style='height: 270px; display: flex; flex-direction: column;'>
-<div><span style='font-size: 0.95rem; font-weight: bold;'>⭐ KESIMPULAN SINYAL</span><br><hr style='margin: 8px 0; border-color:#374151;'></div>
+<div><span style='font-size: 1rem; font-weight: bold;'>⭐ KESIMPULAN SINYAL</span><br><hr style='margin: 8px 0; border-color:#374151;'></div>
 <div style='margin-top: auto; margin-bottom: auto; text-align: center;'>{kesimpulan_html}</div>
 </div>""".replace('\n', '')
 
 box4 = f"""<div style='height: 270px; display: flex; flex-direction: column;'>
-<div><span style='font-size: 0.95rem; font-weight: bold;'>📈 TREND & BANDARMOLOGY</span><br><hr style='margin: 8px 0; border-color:#374151;'><strong>Tren Utama:</strong> {data['trend']}<br>{bb_html}</div>
-<div style='margin-top: auto;'><hr style='margin: 8px 0; border-color:#374151;'>{bandar_html}<br>{bo_html}</div>
+<div><span style='font-size: 1rem; font-weight: bold;'>📈 TREND & BANDARMOLOGY</span><br><hr style='margin: 8px 0; border-color:#374151;'><span style='color:#9ca3af;'>Tren Utama:</span> <strong style='font-size:1.05rem; color:#f3f4f6;'>{data['trend']}</strong><br>{bb_html}</div>
+<div style='margin-top: auto;'><hr style='margin: 8px 0; border-color:#374151;'>✔️ {bandar_html}<br>✔️ {bo_html}</div>
 </div>""".replace('\n', '')
 
 box5 = f"""<div style='height: 270px; display: flex; flex-direction: column;'>
-<div><span style='font-size: 0.95rem; font-weight: bold;'>📐 FIBO & VOLUME (VPA)</span><br><hr style='margin: 8px 0; border-color:#374151;'><strong>Posisi Fibo:</strong> {data['fibo_stat']}<br><strong>Golden Ratio (61.8%):</strong> Rp{int(data['fibo_618'])}</div>
-<div style='margin-top: auto;'>{vpa_html}</div>
+<div><span style='font-size: 1rem; font-weight: bold;'>📐 FIBO & VOLUME (VPA)</span><br><hr style='margin: 8px 0; border-color:#374151;'><span style='color:#9ca3af;'>Posisi Fibo:</span> <strong style='font-size:1.05rem; color:#f3f4f6;'>{data['fibo_stat']}</strong><br><span style='color:#9ca3af;'>Golden Ratio (61.8%):</span> <strong style='font-size:1.05rem; color:#fbbf24;'>Rp{int(data['fibo_618'])}</strong></div>
+<div style='margin-top: auto; text-align: center;'>{vpa_html}</div>
 </div>""".replace('\n', '')
 
 box6 = f"""<div style='height: 270px; display: flex; flex-direction: column;'>
-<div><span style='font-size: 0.95rem; font-weight: bold;'>📊 INDIKATOR & INFO</span><br><hr style='margin: 8px 0; border-color:#374151;'>📌 <strong>EMA Cross:</strong> {data['ema_cross']}<br>📌 <strong>RSI (14):</strong> {data['rsi_val']:.1f} - <strong>{data['rsi_status']}</strong></div>
-<div style='margin-top: auto;'><hr style='margin: 8px 0; border-color:#374151;'>👥 <strong>Saham Beredar:</strong><br><strong>{shares_str}</strong></div>
+<div><span style='font-size: 1rem; font-weight: bold;'>📊 INDIKATOR & INFO</span><br><hr style='margin: 8px 0; border-color:#374151;'>📌 <span style='color:#9ca3af;'>EMA Cross:</span> <strong>{data['ema_cross']}</strong><br>📌 <span style='color:#9ca3af;'>RSI (14):</span> <strong style='font-size:1.05rem;'>{data['rsi_val']:.1f} - {data['rsi_status']}</strong></div>
+<div style='margin-top: auto;'><hr style='margin: 8px 0; border-color:#374151;'>👥 <span style='color:#9ca3af;'>Saham Beredar:</span><br><strong style='font-size:1.1rem; color:#f3f4f6;'>{shares_str}</strong></div>
 </div>""".replace('\n', '')
 
 # BARIS 1 (Tiga Kotak Presisi)

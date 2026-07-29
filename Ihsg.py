@@ -179,7 +179,6 @@ arrow = "▼" if data['change'] < 0 else "▲"
 color = "#f87171" if data['change'] < 0 else "#4ade80" 
 today_date = datetime.datetime.now().strftime("%d %B %Y")
 
-# URL Logo otomatis berdasarkan Ticker (Menggunakan API clearbit / logo stock)
 logo_url = f"https://assets.parqet.com/logos/symbol/{ticker_input}.JK?format=png"
 
 col_h1, col_h2, col_h3 = st.columns([2, 1.2, 1.3])
@@ -187,7 +186,6 @@ col_h1, col_h2, col_h3 = st.columns([2, 1.2, 1.3])
 with col_h1:
     st.markdown("<span style='font-size: 0.85rem; color:#9ca3af; font-weight:bold;'>HOLY GRAIL SYSTEM</span>", unsafe_allow_html=True)
     
-    # Header dengan Logo di Samping Nama Emiten
     st.markdown(f"""
         <div style="display: flex; align-items: center; gap: 12px; margin-top: 5px; margin-bottom: 5px;">
             <img src="{logo_url}" width="45" height="45" style="border-radius: 8px; background: white; padding: 2px;" onerror="this.style.display='none'">
@@ -224,7 +222,7 @@ st.divider()
 
 
 # ==========================================
-# --- 2. CHART & TRADE PLAN (TINGGI SETARA) ---
+# --- 2. CHART & TRADE PLAN ---
 # ==========================================
 col_chart, col_plan = st.columns([2.2, 1.2])
 
@@ -257,35 +255,30 @@ with col_chart:
     components.html(tradingview_html, height=530)
 
 with col_plan:
-    # Kotak kanan dikunci tingginya agar persis setara dengan chart 530px
     with st.container(border=True):
-        st.markdown("<div style='height: 510px; display: flex; flex-direction: column; justify-content: space-between;'>", unsafe_allow_html=True)
-        
-        <div>
-            st.markdown("💰 <strong>TRADE PLAN (God-Tier)</strong>", unsafe_allow_html=True)
-            if score >= 8: st.markdown(f"<span style='color:#4ade80;'><strong>Entry:</strong> Hajar Beli di Rp{int(data['price'])}</span>", unsafe_allow_html=True)
-            elif score >= 5: st.markdown(f"<span style='color:#fbbf24;'><strong>Entry:</strong> Antre di Support Rp{int(data['sup'])}</span>", unsafe_allow_html=True)
-            else: st.markdown("<span style='color:#f87171;'><strong>Entry:</strong> JANGAN BELI (Wait & See)</span>", unsafe_allow_html=True)
+        # Dibungkus menggunakan st.markdown dengan string HTML multi-baris aman
+        plan_html = f"""
+        <div style='height: 510px; display: flex; flex-direction: column; justify-content: space-between;'>
+            <div>
+                <span style='font-size: 0.9rem; font-weight: bold;'>💰 TRADE PLAN (God-Tier)</span><br>
+                {"<span style='color:#4ade80;'><strong>Entry:</strong> Hajar Beli di Rp" + str(int(data['price'])) + "</span>" if score >= 8 else ("<span style='color:#fbbf24;'><strong>Entry:</strong> Antre di Support Rp" + str(int(data['sup'])) + "</span>" if score >= 5 else "<span style='color:#f87171;'><strong>Entry:</strong> JANGAN BELI (Wait & See)</span>")}
+                <br><span style='color:#f87171;'><strong>Stop Loss:</strong> Jika jebol Rp{int(data['sup'])}</span>
                 
-            st.markdown(f"<span style='color:#f87171;'><strong>Stop Loss:</strong> Jika jebol Rp{int(data['sup'])}</span>", unsafe_allow_html=True)
+                <br><br>🎯 <strong>TARGET HARGA</strong><br>
+                🥇 <strong>TP 1 (Resist):</strong> Rp{int(data['res'])}<br>
+                🚀 <strong>TP 2 (Fibo Swing):</strong> Rp{int(data['swing_high'])}
+                
+                {"<div style='background:#1e3a8a; color:white; padding:6px; border-radius:6px; text-align:center; font-weight:bold; font-size:0.75rem; margin: 6px 0;'>⚖️ Risk : Reward = 1 : " + str(round((int(data['res']) - int(data['price'])) / risk_per_share, 1)) + "</div>" if risk_per_share > 0 and (int(data['res']) - int(data['price'])) > 0 else ""}
+            </div>
             
-            st.markdown("🎯 <strong>TARGET HARGA</strong>", unsafe_allow_html=True)
-            st.markdown(f"🥇 <strong>TP 1 (Resist):</strong> Rp{int(data['res'])}", unsafe_allow_html=True)
-            st.markdown(f"🚀 <strong>TP 2 (Fibo Swing):</strong> Rp{int(data['swing_high'])}", unsafe_allow_html=True)
-            
-            reward = int(data['res']) - int(data['price'])
-            if risk_per_share > 0 and reward > 0:
-                st.markdown(f"<div style='background:#1e3a8a; color:white; padding:6px; border-radius:6px; text-align:center; font-weight:bold; font-size:0.75rem; margin: 6px 0;'>⚖️ Risk : Reward = 1 : {round(reward / risk_per_share, 1)}</div>", unsafe_allow_html=True)
-        
-        <div>
-            st.markdown("<hr style='margin: 8px 0; border-color:#374151;'>🛡️ <strong>MONEY MANAGEMENT</strong>", unsafe_allow_html=True)
-            if max_lot > 0 and score >= 5:
-                st.markdown(f"<div style='background:#065f46; color:#a7f3d0; padding:6px; border-radius:6px; text-align:center;'>🛒 MAKSIMAL BELI: <strong style='font-size:1.1rem;'>{max_lot} LOT</strong></div>", unsafe_allow_html=True)
-            else:
-                st.markdown("<div style='background:#7f1d1d; color:#fca5a5; padding:6px; border-radius:6px; text-align:center;'>🚫 KONDISI TIDAK AMAN UNTUK BUY</div>", unsafe_allow_html=True)
+            <div>
+                <hr style='margin: 8px 0; border-color:#374151;'>
+                🛡️ <strong>MONEY MANAGEMENT</strong><br>
+                {"<div style='background:#065f46; color:#a7f3d0; padding:6px; border-radius:6px; text-align:center;'>🛒 MAKSIMAL BELI: <strong style='font-size:1.1rem;'>" + str(max_lot) + " LOT</strong></div>" if max_lot > 0 and score >= 5 else "<div style='background:#7f1d1d; color:#fca5a5; padding:6px; border-radius:6px; text-align:center;'>🚫 KONDISI TIDAK AMAN UNTUK BUY</div>"}
+            </div>
         </div>
-        
-        st.markdown("</div>", unsafe_allow_html=True)
+        """
+        st.markdown(plan_html, unsafe_allow_html=True)
 
 
 # ==========================================
@@ -296,52 +289,49 @@ col_b1, col_b2, col_b3 = st.columns(3)
 
 with col_b1:
     with st.container(border=True):
-        st.markdown("📈 <strong>TREND & SQUEEZE</strong>", unsafe_allow_html=True)
-        st.markdown(f"<strong>Tren Utama:</strong> {data['trend']}", unsafe_allow_html=True)
-        if "SQUEEZE" in data['bb_stat']: st.markdown(f"<span style='color:#f87171; font-weight:bold;'>{data['bb_stat']}</span>", unsafe_allow_html=True)
-        else: st.markdown(f"<span style='color:#4ade80;'>{data['bb_stat']}</span>", unsafe_allow_html=True)
+        b1_html = f"""
+        📈 <strong>TREND & SQUEEZE</strong><br>
+        <strong>Tren Utama:</strong> {data['trend']}<br>
+        {"<span style='color:#f87171; font-weight:bold;'>" + data['bb_stat'] + "</span>" if "SQUEEZE" in data['bb_stat'] else "<span style='color:#4ade80;'>" + data['bb_stat'] + "</span>"}
         
-        st.markdown("<hr style='margin: 10px 0; border-color:#374151;'>🏦 <strong>BANDAR & ORDERBOOK</strong>", unsafe_allow_html=True)
-        if "Akumulasi" in status_bandar: st.markdown("✔️ Bandar: <strong><span style='color:#4ade80;'>Akumulasi</span></strong>", unsafe_allow_html=True)
-        elif "Distribusi" in status_bandar: st.markdown("❌ Bandar: <strong><span style='color:#f87171;'>Distribusi</span></strong>", unsafe_allow_html=True)
-        else: st.markdown("➖ Bandar: <strong><span style='color:#fbbf24;'>Netral</span></strong>", unsafe_allow_html=True)
-        
-        if "BID" in status_bidoffer: st.markdown("✔️ Bid/Offer: <strong><span style='color:#4ade80;'>Dominan BID</span></strong>", unsafe_allow_html=True)
-        elif "OFFER" in status_bidoffer: st.markdown("❌ Bid/Offer: <strong><span style='color:#f87171;'>Dominan OFFER</span></strong>", unsafe_allow_html=True)
-        else: st.markdown("➖ Bid/Offer: <strong><span style='color:#fbbf24;'>Berimbang</span></strong>", unsafe_allow_html=True)
+        <hr style='margin: 10px 0; border-color:#374151;'>
+        🏦 <strong>BANDAR & ORDERBOOK</strong><br>
+        {"✔️ Bandar: <strong><span style='color:#4ade80;'>Akumulasi</span></strong>" if "Akumulasi" in status_bandar else ("❌ Bandar: <strong><span style='color:#f87171;'>Distribusi</span></strong>" if "Distribusi" in status_bandar else "➖ Bandar: <strong><span style='color:#fbbf24;'>Netral</span></strong>")}<br>
+        {"✔️ Bid/Offer: <strong><span style='color:#4ade80;'>Dominan BID</span></strong>" if "BID" in status_bidoffer else ("❌ Bid/Offer: <strong><span style='color:#f87171;'>Dominan OFFER</span></strong>" if "OFFER" in status_bidoffer else "➖ Bid/Offer: <strong><span style='color:#fbbf24;'>Berimbang</span></strong>")}
+        """
+        st.markdown(b1_html, unsafe_allow_html=True)
 
 with col_b2:
     with st.container(border=True):
-        st.markdown("📐 <strong>FIBO & VOLUME (VPA)</strong>", unsafe_allow_html=True)
-        st.markdown(f"<strong>Posisi Fibo:</strong> {data['fibo_stat']}", unsafe_allow_html=True)
-        st.markdown(f"<strong>Golden Ratio (61.8%):</strong> Rp{int(data['fibo_618'])}", unsafe_allow_html=True)
-        if data['vpa_score'] == 1: st.markdown(f"<div style='background:#065f46; color:#a7f3d0; padding:3px 6px; border-radius:4px; margin-top:4px;'>📊 VPA: {data['vpa_stat']}</div>", unsafe_allow_html=True)
-        else: st.markdown(f"<div style='background:#78350f; color:#fde68a; padding:3px 6px; border-radius:4px; margin-top:4px;'>📊 VPA: {data['vpa_stat']}</div>", unsafe_allow_html=True)
+        vpa_bg = "#065f46; color:#a7f3d0;" if data['vpa_score'] == 1 else "#78350f; color:#fde68a;"
+        b2_html = f"""
+        📐 <strong>FIBO & VOLUME (VPA)</strong><br>
+        <strong>Posisi Fibo:</strong> {data['fibo_stat']}<br>
+        <strong>Golden Ratio (61.8%):</strong> Rp{int(data['fibo_618'])}<br>
+        <div style='background:{vpa_bg} padding:3px 6px; border-radius:4px; margin-top:4px;'>📊 VPA: {data['vpa_stat']}</div>
         
-        st.markdown("<hr style='margin: 10px 0; border-color:#374151;'>⭐ <strong>KESIMPULAN SINYAL</strong>", unsafe_allow_html=True)
-        if score >= 8 and "SQUEEZE" in data['bb_stat']:
-            st.info(f"🌋 **JACKPOT! {ticker_input} SIAP MELEDAK** - Hajar Kanan!")
-        elif score >= 8:
-            st.success(f"🔥 **{ticker_input} SANGAT POTENSIAL** - Bullish & Akumulasi!")
-        elif score >= 5:
-            st.warning(f"⚠️ **PANTAU KETAT {ticker_input}** - Cicil di Support.")
-        else:
-            st.error(f"💀 **JAUHI {ticker_input}** - Trend hancur.")
+        <hr style='margin: 10px 0; border-color:#374151;'>
+        ⭐ <strong>KESIMPULAN SINYAL</strong><br>
+        { ("🌋 <b>JACKPOT! " + ticker_input + " SIAP MELEDAK</b> - Hajar Kanan!") if score >= 8 and "SQUEEZE" in data['bb_stat'] else (("🔥 <b>" + ticker_input + " SANGAT POTENSIAL</b> - Bullish & Akumulasi!") if score >= 8 else (("⚠️ <b>PANTAU KETAT " + ticker_input + "</b> - Cicil di Support.") if score >= 5 else ("💀 <b>JAUHI " + ticker_input + "</b> - Trend hancur."))) }
+        """
+        st.markdown(b2_html, unsafe_allow_html=True)
 
 with col_b3:
     with st.container(border=True):
-        st.markdown("📊 <strong>INDIKATOR TEKNIKAL</strong>", unsafe_allow_html=True)
-        st.markdown(f"📌 <strong>EMA Cross:</strong> {data['ema_cross']}", unsafe_allow_html=True)
-        st.markdown(f"📌 <strong>RSI (14):</strong> {data['rsi_val']:.1f} - <strong>{data['rsi_status']}</strong>", unsafe_allow_html=True)
-        st.markdown(f"🟢 <strong>Support:</strong> Rp{int(data['sup'])}", unsafe_allow_html=True)
-        st.markdown(f"🔴 <strong>Resistance:</strong> Rp{int(data['res'])}", unsafe_allow_html=True)
+        shares_str = f"{data['shares'] / 1e9:.2f} Miliar Lembar" if data['shares'] != "N/A" else "Tidak diketahui"
+        b3_html = f"""
+        📊 <strong>INDIKATOR TEKNIKAL</strong><br>
+        📌 <strong>EMA Cross:</strong> {data['ema_cross']}<br>
+        📌 <strong>RSI (14):</strong> {data['rsi_val']:.1f} - <strong>{data['rsi_status']}</strong><br>
+        🟢 <strong>Support:</strong> Rp{int(data['sup'])}<br>
+        🔴 <strong>Resistance:</strong> Rp{int(data['res'])}
         
-        st.markdown("<hr style='margin: 10px 0; border-color:#374151;'>👥 <strong>INFO PERUSAHAAN</strong>", unsafe_allow_html=True)
-        st.markdown("<span style='color:#9ca3af;'>SAHAM BEREDAR</span>", unsafe_allow_html=True)
-        if data['shares'] != "N/A":
-            st.markdown(f"<strong>{data['shares'] / 1e9:.2f} Miliar Lembar</strong>", unsafe_allow_html=True)
-        else:
-            st.markdown("<strong>Tidak diketahui</strong>", unsafe_allow_html=True)
+        <hr style='margin: 10px 0; border-color:#374151;'>
+        👥 <strong>INFO PERUSAHAAN</strong><br>
+        <span style='color:#9ca3af;'>SAHAM BEREDAR</span><br>
+        <strong>{shares_str}</strong>
+        """
+        st.markdown(b3_html, unsafe_allow_html=True)
 
 
 # ==========================================

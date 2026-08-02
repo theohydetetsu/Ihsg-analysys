@@ -287,7 +287,7 @@ with col_h4:
     
     st.markdown(f"""
     <div style='background: linear-gradient(145deg, #1f2937, #111827); border: 1px solid #374151; padding: 10px; border-radius: 10px; margin-top: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);'>
-        <div style='color:#9ca3af; font-size:0.75rem; font-weight:bold; letter-spacing:1px; margin-bottom: 6px; white-space: nowrap;'>🎯 TRADE PLAN & SNIPER</div>
+        <div style='color:#9ca3af; font-size:0.75rem; font-weight:bold; letter-spacing:1px; margin-bottom: 6px; white-space: nowrap;'>🎯 TRADE PLAN</div>
         <div style='display:flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 2px;'>
             <span style='color:#d1d5db;'>Entry:</span> <span>{entry_val}</span>
         </div>

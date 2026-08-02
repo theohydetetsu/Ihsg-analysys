@@ -9,7 +9,7 @@ import streamlit.components.v1 as components
 # ==========================================
 st.set_page_config(page_title="HOLY GRAIL ULTIMATE - Quant Sniper", layout="wide")
 
-# CSS PREMIUM (RESPONSIVE & ANTI-WRAP)
+# CSS PREMIUM (RESPONSIVE & BLUEPRINT STYLE)
 st.markdown("""<style>
 .stApp, [data-testid="stAppViewContainer"] {background-color: #020617 !important;}
 [data-testid="stHeader"] {background-color: rgba(0,0,0,0) !important;}
@@ -70,24 +70,35 @@ def get_stock_data(ticker_symbol):
         
         company_name = info.get('longName', f"PT {ticker_symbol.replace('.JK', '')} Tbk")
         shares = info.get('sharesOutstanding', "N/A")
+        ceo_name = info.get('companyOfficers', [{}])[0].get('name', 'N/A') if info.get('companyOfficers') else 'N/A'
         
-        # Ekstraksi Data Fundamental & Kuartal
-        def safe_pct(val): return f"{val * 100:.1f}%" if val and val != "N/A" else "N/A"
-        def safe_num(val): return f"{val:.2f}x" if val and val != "N/A" else "N/A"
-        
-        pe_ratio = safe_num(info.get('trailingPE'))
-        pbv_ratio = safe_num(info.get('priceToBook'))
-        roe = safe_pct(info.get('returnOnEquity'))
-        npm = safe_pct(info.get('profitMargins'))
-        
-        eps_growth_raw = info.get('earningsQuarterlyGrowth')
-        eps_growth = safe_pct(eps_growth_raw)
-        if eps_growth_raw and eps_growth_raw > 0: eps_color = "#4ade80"
-        elif eps_growth_raw and eps_growth_raw < 0: eps_color = "#f87171"
-        else: eps_color = "#9ca3af"
+        market_cap_raw = info.get('marketCap', 0)
+        if market_cap_raw and market_cap_raw != "N/A":
+            market_cap_str = f"{market_cap_raw / 1e12:.2f} T"
+        else:
+            market_cap_str = "N/A"
+
+        # Format Fundamental & Growth
+        pe_val = info.get('trailingPE', 0)
+        pbv_val = info.get('priceToBook', 0)
+        roe_val = info.get('returnOnEquity', 0)
+        npm_val = info.get('profitMargins', 0)
+        eps_growth_raw = info.get('earningsQuarterlyGrowth', 0)
+
+        pe_str = f"{pe_val:.2f}x" if pe_val and pe_val != "N/A" else "N/A"
+        pbv_str = f"{pbv_val:.2f}x" if pbv_val and pbv_val != "N/A" else "N/A"
+        roe_str = f"{roe_val * 100:.1f}%" if roe_val and roe_val != "N/A" else "N/A"
+        npm_str = f"{npm_val * 100:.1f}%" if npm_val and npm_val != "N/A" else "N/A"
+        eps_growth_str = f"{eps_growth_raw * 100:.1f}%" if eps_growth_raw and eps_growth_raw != "N/A" else "N/A"
+
+        # Penilaian Status (Bagus / Jelek / Stabil) berdasarkan Blueprint Foto 3
+        pe_status = "Bagus" if pe_val and pe_val < 20 else ("Jelek" if pe_val and pe_val > 35 else "Stabil")
+        pbv_status = "Bagus" if pbv_val and pbv_val < 2 else ("Jelek" if pbv_val and pbv_val > 5 else "Stabil")
+        roe_status = "Bagus" if roe_val and roe_val > 0.15 else ("Jelek" if roe_val and roe_val < 0.05 else "Stabil")
+        npm_status = "Bagus" if npm_val and npm_val > 0.2 else ("Jelek" if npm_val and npm_val < 0.05 else "Stabil")
+        eps_status = "Bagus" if eps_growth_raw and eps_growth_raw > 0.1 else ("Jelek" if eps_growth_raw and eps_growth_raw < 0 else "Stabil")
 
         close_prices = hist['Close']
-        
         ema9 = close_prices.ewm(span=9, adjust=False).mean().iloc[-1]
         ema21 = close_prices.ewm(span=21, adjust=False).mean().iloc[-1]
         ema_cross = "Bullish (EMA9 > EMA21)" if ema9 > ema21 else "Bearish (EMA9 < EMA21)"
@@ -98,14 +109,11 @@ def get_stock_data(ticker_symbol):
         sma60 = close_prices.rolling(60).mean().iloc[-1]
         
         if latest_price > sma5 and sma5 > sma20 and sma20 > sma60:
-            mtf_status = "ALIGNMENT BULLISH"
-            mtf_score = 2
+            mtf_status, mtf_score = "ALIGNMENT BULLISH", 2
         elif latest_price > sma20:
-            mtf_status = "MODERATE (Campur)"
-            mtf_score = 1
+            mtf_status, mtf_score = "MODERATE (Campur)", 1
         else:
-            mtf_status = "DEAD CROSS (Bearish)"
-            mtf_score = 0
+            mtf_status, mtf_score = "DEAD CROSS (Bearish)", 0
 
         delta = close_prices.diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
@@ -113,9 +121,7 @@ def get_stock_data(ticker_symbol):
         rs = gain / loss
         rsi_series = 100 - (100 / (1 + rs))
         rsi_val = rsi_series.iloc[-1]
-        if rsi_val >= 70: rsi_status = "Overbought"
-        elif rsi_val <= 30: rsi_status = "Oversold"
-        else: rsi_status = "Netral"
+        rsi_status = "Overbought" if rsi_val >= 70 else ("Oversold" if rsi_val <= 30 else "Netral")
         
         res_terdekat = hist['High'].tail(20).max()
         sup_terdekat = hist['Low'].tail(20).min()
@@ -132,9 +138,7 @@ def get_stock_data(ticker_symbol):
         vol_latest = hist['Volume'].iloc[-1]
         vol_ma20 = hist['Volume'].rolling(20).mean().iloc[-1]
         vol_ratio = (vol_latest / vol_ma20) * 100 if vol_ma20 > 0 else 0
-        if vol_ratio > 150: vpa_stat, vpa_score = f"Ledakan Vol ({int(vol_ratio)}%)", 1
-        elif vol_ratio < 80: vpa_stat, vpa_score = f"Vol Kering ({int(vol_ratio)}%)", 0
-        else: vpa_stat, vpa_score = f"Vol Normal ({int(vol_ratio)}%)", 0
+        vpa_stat, vpa_score = (f"Ledakan Vol ({int(vol_ratio)}%)", 1) if vol_ratio > 150 else ((f"Vol Kering ({int(vol_ratio)}%)", 0) if vol_ratio < 80 else (f"Vol Normal ({int(vol_ratio)}%)", 0))
 
         std20 = close_prices.rolling(20).std()
         bandwidth = ( (sma20 + (2 * std20)) - (sma20 - (2 * std20)) ) / sma20
@@ -142,21 +146,18 @@ def get_stock_data(ticker_symbol):
         bw_120_min = bandwidth.tail(120).min()
         bb_stat = "🔥 SQUEEZE (Siaga Meledak)" if bw_latest <= (bw_120_min * 1.25) else "Normal / Ekspansi"
 
-        # --- VCP ENGINE ---
+        # VCP ENGINE
         daily_range = hist['High'] - hist['Low']
         atr_20 = daily_range.rolling(20).mean().iloc[-1]
         atr_5 = daily_range.rolling(5).mean().iloc[-1]
         vol_5 = hist['Volume'].rolling(5).mean().iloc[-1]
         
         if atr_5 < (atr_20 * 0.8) and vol_5 < vol_ma20 and latest_price > sma60:
-            vcp_stat = "🎯 Terdeteksi (Siap Breakout)"
-            vcp_score = 1
+            vcp_stat, vcp_score = "🎯 Terdeteksi (Siap Breakout)", 1
         elif atr_5 < atr_20:
-            vcp_stat = "⏳ Menyempit (Formasi)"
-            vcp_score = 0
+            vcp_stat, vcp_score = "⏳ Menyempit (Formasi)", 0
         else:
-            vcp_stat = "✖️ Melebar (Bukan VCP)"
-            vcp_score = 0
+            vcp_stat, vcp_score = "✖️ Melebar (Bukan VCP)", 0
 
         try:
             intraday = stock.history(period="1d", interval="5m")
@@ -164,37 +165,24 @@ def get_stock_data(ticker_symbol):
                 typical_price = (intraday['High'] + intraday['Low'] + intraday['Close']) / 3
                 vwap_kalkulasi = (typical_price * intraday['Volume']).cumsum() / intraday['Volume'].cumsum()
                 vwap_val = vwap_kalkulasi.iloc[-1]
-                
-                if latest_price > (vwap_val * 1.005):
-                    vwap_stat = "Di Atas VWAP (Bullish)"
-                    vwap_score = 1
-                elif latest_price < (vwap_val * 0.995):
-                    vwap_stat = "Di Bawah VWAP (Lemah)"
-                    vwap_score = 0
-                else:
-                    vwap_stat = "Persis Area VWAP"
-                    vwap_score = 1
+                vwap_stat, vwap_score = ("Di Atas VWAP (Bullish)", 1) if latest_price > (vwap_val * 1.005) else (("Di Bawah VWAP (Lemah)", 0) if latest_price < (vwap_val * 0.995) else ("Persis Area VWAP", 1))
             else:
-                vwap_val = 0
-                vwap_stat = "VWAP Tertunda"
-                vwap_score = 0
+                vwap_val, vwap_stat, vwap_score = 0, "VWAP Tertunda", 0
         except:
-            vwap_val = 0
-            vwap_stat = "VWAP Error"
-            vwap_score = 0
+            vwap_val, vwap_stat, vwap_score = 0, "VWAP Error", 0
 
         return {
             'price': latest_price, 'change': change_pct, 'div': dividend_yield, 'name': company_name,
             'ema_cross': ema_cross, 'trend': trend_status, 'rsi_val': rsi_val, 'rsi_status': rsi_status,
-            'res': res_terdekat, 'sup': sup_terdekat, 'shares': shares,
+            'res': res_terdekat, 'sup': sup_terdekat, 'shares': shares, 'ceo': ceo_name, 'market_cap': market_cap_str,
             'swing_high': swing_high, 'fibo_382': fibo_382, 'fibo_618': fibo_618,
             'fibo_stat': fibo_stat, 'fibo_score': fibo_score,
             'vpa_stat': vpa_stat, 'vpa_score': vpa_score, 'bb_stat': bb_stat,
             'mtf_status': mtf_status, 'mtf_score': mtf_score,
             'vwap_val': vwap_val, 'vwap_stat': vwap_stat, 'vwap_score': vwap_score,
             'vcp_stat': vcp_stat, 'vcp_score': vcp_score,
-            'pe': pe_ratio, 'pbv': pbv_ratio, 'roe': roe, 'npm': npm, 
-            'eps_growth': eps_growth, 'eps_color': eps_color
+            'pe': pe_str, 'pbv': pbv_str, 'roe': roe_str, 'npm': npm_str, 'eps_growth': eps_growth_str,
+            'pe_status': pe_status, 'pbv_status': pbv_status, 'roe_status': roe_status, 'npm_status': npm_status, 'eps_status': eps_status
         }
     except:
         return None
@@ -245,7 +233,7 @@ else:
 
 
 # ==========================================
-# --- 1. HEADER DASHBOARD (ANTI-WRAP & RESPONSIVE) ---
+# --- 1. HEADER DASHBOARD ---
 # ==========================================
 arrow = "▼" if data['change'] < 0 else "▲"
 color = "#f87171" if data['change'] < 0 else "#4ade80" 
@@ -287,7 +275,6 @@ with col_h3:
     st.markdown("</div>", unsafe_allow_html=True)
 
 with col_h4:
-    # SATU-SATUNYA TRADE PLAN (Sekarang Fokus di Header Saja)
     reward = int(data['res']) - int(data['price'])
     rr_html = f"<div style='background:#1e3a8a; color:white; padding:4px; border-radius:4px; text-align:center; font-weight:bold; font-size:0.75rem; margin-top: 6px;'>⚖️ Risk : Reward = 1 : {round(reward / risk_per_share, 1) if risk_per_share > 0 else 0}</div>"
     
@@ -342,12 +329,12 @@ components.html(tradingview_html, height=430)
 
 
 # ==========================================
-# --- 3. KOTAK ANALISA (COMPACT 215px) ---
+# --- 3. KOTAK ANALISA (BLUEPRINT EDITIONS) ---
 # ==========================================
 if max_lot > 0 and score >= 5:
     mm_html = f"<div style='background:#065f46; color:#a7f3d0; padding:10px; border-radius:8px; text-align:center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5);'>🛒 MAKSIMAL BELI:<br><div style='font-size:2rem; font-weight:900; line-height:1.2; margin-top:2px;'>{max_lot} LOT</div></div>"
 else:
-    mm_html = "<div style='background:#7f1d1d; color:#fca5a5; padding:10px; border-radius:8px; text-align:center; font-weight:bold; font-size:1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5);'>🚫 TIDAK AMAN ENTRY</div>"
+    mm_html = "<div style='background:#7f1d1d; color:#fca5a5; padding:10px; border-radius:8px; text-align:center; font-weight:bold; font-size:1.05rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5);'>🚫 TIDAK AMAN ENTRY</div>"
 
 if "SQUEEZE" in data['bb_stat']: bb_html = f"<span style='color:#f87171; font-weight:bold;'>{data['bb_stat']}</span>"
 else: bb_html = f"<span style='color:#4ade80; font-weight:bold;'>{data['bb_stat']}</span>"
@@ -361,10 +348,7 @@ elif "NET SELL" in status_asing: asing_html = "Asing: <span style='color:#f87171
 else: asing_html = "Asing: <span style='color:#fbbf24; font-weight:bold;'>Netral / Mixed</span>"
 
 vwap_color = "#4ade80" if data['vwap_score'] == 1 else "#f87171"
-if data['vwap_val'] > 0:
-    vwap_html = f"VWAP: <span style='color:{vwap_color}; font-weight:bold;'>Rp{int(data['vwap_val'])} ({data['vwap_stat']})</span>"
-else:
-    vwap_html = f"VWAP: <span style='color:#9ca3af; font-weight:bold;'>Tunggu Data...</span>"
+vwap_html = f"VWAP: <span style='color:{vwap_color}; font-weight:bold;'>Rp{int(data['vwap_val'])} ({data['vwap_stat']})</span>" if data['vwap_val'] > 0 else "VWAP: <span style='color:#9ca3af; font-weight:bold;'>Tunggu Data...</span>"
 
 vpa_bg = "#065f46; color:#a7f3d0;" if data['vpa_score'] == 1 else "#78350f; color:#fde68a;"
 vpa_html = f"<div style='background:{vpa_bg}; padding:4px 10px; border-radius:6px; margin-top:8px; display:inline-block; font-weight:bold; font-size:0.9rem;'>📊 VPA: {data['vpa_stat']}</div>"
@@ -373,45 +357,61 @@ if data['vcp_score'] == 1: vcp_color = "#4ade80"
 elif "Menyempit" in data['vcp_stat']: vcp_color = "#fbbf24"
 else: vcp_color = "#9ca3af"
 
-if score >= 13: kesimpulan_html = f"⚡<br><div style='font-size:1.2rem; font-weight:900; color:#4ade80; margin: 4px 0;'>GOD MODE SNIPER!<br>{ticker_input} SIAP TERBANG</div>"
-elif score >= 9: kesimpulan_html = f"🔥<br><div style='font-size:1.2rem; font-weight:900; color:#4ade80; margin: 4px 0;'>{ticker_input}<br>HIGH PROBABILITY</div>"
-elif score >= 5: kesimpulan_html = f"⚠️<br><div style='font-size:1.2rem; font-weight:900; color:#fbbf24; margin: 4px 0;'>PANTAU KETAT<br>{ticker_input}</div>"
-else: kesimpulan_html = f"💀<br><div style='font-size:1.2rem; font-weight:900; color:#f87171; margin: 4px 0;'>JAUHI {ticker_input}<br>SEMENTARA</div>"
+# Helper warna badge status fundamental (Foto 3)
+def get_badge_color(status_str):
+    if status_str == "Bagus": return "#4ade80" # Hijau
+    elif status_str == "Jelek": return "#f87171" # Merah
+    return "#fbbf24" # Stabil / Kuning
 
-shares_str = f"{data['shares'] / 1e9:.2f} Miliar Lembar" if data['shares'] != "N/A" else "Tidak diketahui"
-
-
-# BOX 1 BARU: FUNDAMENTAL & GROWTH KUARTAL
+# KOTAK 1: STATISTIK SAAT INI (Berdasarkan FOTO 2)
 box1 = f"""<div style='height: 215px; display: flex; flex-direction: column;'>
-<div><span style='font-size: 0.95rem; font-weight: bold;'>💼 FUNDAMENTAL & Q-GROWTH</span><br><hr style='margin: 6px 0; border-color:#374151;'>
-📌 <span style='color:#9ca3af;'>Valuasi (PER / PBV):</span> <strong style='color:#f3f4f6;'>{data['pe']} / {data['pbv']}</strong><br>
-📌 <span style='color:#9ca3af;'>Profit (ROE / NPM):</span> <strong style='color:#f3f4f6;'>{data['roe']} / {data['npm']}</strong></div>
-<div style='margin-top: auto;'><hr style='margin: 6px 0; border-color:#374151;'>📈 <span style='color:#9ca3af;'>EPS Growth (QoQ):</span> <strong style='color:{data['eps_color']}; font-size: 1.05rem;'>{data['eps_growth']}</strong></div>
+<div><span style='font-size: 0.95rem; font-weight: bold;'>📊 STATISTIK SAAT INI</span><br><hr style='margin: 6px 0; border-color:#374151;'>
+📌 <span style='color:#9ca3af;'>Market Cap:</span> <strong style='color:#f3f4f6;'>{data['market_cap']}</strong><br>
+📌 <span style='color:#9ca3af;'>Ratio Harga/Div:</span> <strong style='color:#f3f4f6;'>{round(data['div'], 2)}%</strong><br>
+📌 <span style='color:#9ca3af;'>EPS Dasar (TTM):</span> <strong style='color:#4ade80;'>{data['eps_growth']}</strong><br>
+📌 <span style='color:#9ca3af;'>CEO:</span> <strong style='color:#f3f4f6; font-size:0.8rem;'>{data['ceo']}</strong></div>
+<div style='margin-top: auto;'><hr style='margin: 6px 0; border-color:#374151;'>⚖️ Status: <strong style='color:#4ade80;'>BAGUS / JELAK / STABIL</strong></div>
 </div>""".replace('\n', '')
 
+# KOTAK 2: MONEY MANAGEMENT
 box2 = f"""<div style='height: 215px; display: flex; flex-direction: column;'>
 <div><span style='font-size: 0.95rem; font-weight: bold;'>🛡️ MONEY MANAGEMENT</span><br><hr style='margin: 6px 0; border-color:#374151;'><span style='color:#9ca3af;'>Modal:</span> <strong>Rp{modal_input:,.0f}</strong><br><span style='color:#9ca3af;'>Risiko:</span> <strong>{risk_pct*100}%</strong> <span style='color:#f87171;'>(Rp{max_loss_rp:,.0f})</span></div>
 <div style='margin-top: auto;'>{mm_html}</div>
 </div>""".replace('\n', '')
 
+# KOTAK 3: QUANT SNIPER SCORE (Berdasarkan FOTO 1)
 box3 = f"""<div style='height: 215px; display: flex; flex-direction: column;'>
 <div><span style='font-size: 0.95rem; font-weight: bold;'>⭐ QUANT SNIPER SCORE</span><br><hr style='margin: 6px 0; border-color:#374151;'></div>
-<div style='margin-top: auto; margin-bottom: auto; text-align: center;'>{kesimpulan_html}<div style='margin-top:8px; font-size:0.9rem; color:#9ca3af;'>Probabilitas Win: <strong style='color:{wr_color};'>{win_rate}</strong></div></div>
+<div style='margin-top: auto; margin-bottom: auto; text-align: center;'>
+    <div style='font-size:1.1rem; font-weight:900; color:#4ade80;'>GOD MODE</div>
+    <div style='font-size:1rem; color:#fbbf24;'>⭐⭐⭐⭐⭐</div>
+    <div style='font-size:1.3rem; font-weight:900; color:#fbbf24; margin: 2px 0;'>{score}.0 / 16</div>
+    <div style='font-size:0.95rem; font-weight:bold; color:#f3f4f6;'>SIAP TERBANG</div>
+    <div style='margin-top:6px; font-size:0.85rem; color:#9ca3af;'>WIN: <strong style='color:{wr_color};'>{win_rate}</strong></div>
+</div>
 </div>""".replace('\n', '')
 
+# KOTAK 4: INSTITUTIONAL FLOW
 box4 = f"""<div style='height: 215px; display: flex; flex-direction: column;'>
 <div><span style='font-size: 0.95rem; font-weight: bold;'>🦅 INSTITUTIONAL FLOW</span><br><hr style='margin: 6px 0; border-color:#374151;'>✔️ {asing_html}<br>✔️ {bandar_html}<br>✔️ {vwap_html}</div>
 <div style='margin-top: auto;'><hr style='margin: 6px 0; border-color:#374151;'>{bb_html}</div>
 </div>""".replace('\n', '')
 
+# KOTAK 5: MULTI-TIMEFRAME MATRIX
 box5 = f"""<div style='height: 215px; display: flex; flex-direction: column;'>
 <div><span style='font-size: 0.95rem; font-weight: bold;'>⏳ MULTI-TIMEFRAME MATRIX</span><br><hr style='margin: 6px 0; border-color:#374151;'><span style='color:#9ca3af;'>Matrix:</span> <strong style='color:#4ade80;'>{data['mtf_status']}</strong><br><hr style='margin: 6px 0; border-color:#374151;'><span style='color:#9ca3af;'>Fibo:</span> <strong style='color:#f3f4f6;'>{data['fibo_stat']}</strong> | <span style='color:#fbbf24;'>GR: Rp{int(data['fibo_618'])}</span></div>
 <div style='margin-top: auto; text-align: center;'>{vpa_html}</div>
 </div>""".replace('\n', '')
 
+# KOTAK 6: FUNDAMENTAL & GROWTH (Berdasarkan FOTO 3 - Warna Hijau/Merah)
 box6 = f"""<div style='height: 215px; display: flex; flex-direction: column;'>
-<div><span style='font-size: 0.95rem; font-weight: bold;'>📊 TEKNIKAL & PRICE ACTION</span><br><hr style='margin: 6px 0; border-color:#374151;'>📌 <span style='color:#9ca3af;'>EMA:</span> <strong>{data['ema_cross']}</strong><br>📌 <span style='color:#9ca3af;'>VCP:</span> <strong style='color:{vcp_color};'>{data['vcp_stat']}</strong><br>📌 <span style='color:#9ca3af;'>RSI:</span> <strong>{data['rsi_val']:.1f} ({data['rsi_status']})</strong></div>
-<div style='margin-top: auto;'><hr style='margin: 6px 0; border-color:#374151;'>👥 <span style='color:#9ca3af;'>Saham Beredar:</span> <strong style='color:#f3f4f6;'>{shares_str}</strong></div>
+<div><span style='font-size: 0.95rem; font-weight: bold;'>💼 FUNDAMENTAL & GROWTH</span><br><hr style='margin: 6px 0; border-color:#374151;'>
+📌 <span style='color:#9ca3af;'>PER:</span> <strong style='color:{get_badge_color(data['pe_status'])};'>{data['pe']}</strong><br>
+📌 <span style='color:#9ca3af;'>PBV:</span> <strong style='color:{get_badge_color(data['pbv_status'])};'>{data['pbv']}</strong><br>
+📌 <span style='color:#9ca3af;'>ROE:</span> <strong style='color:{get_badge_color(data['roe_status'])};'>{data['roe']}</strong><br>
+📌 <span style='color:#9ca3af;'>NPM:</span> <strong style='color:{get_badge_color(data['npm_status'])};'>{data['npm']}</strong><br>
+📌 <span style='color:#9ca3af;'>EPS Growth:</span> <strong style='color:{get_badge_color(data['eps_status'])};'>{data['eps_growth']}</strong></div>
+<div style='margin-top: auto;'><hr style='margin: 4px 0; border-color:#374151;'><span style='font-size:0.8rem; color:#9ca3af;'>Status:</span> <strong style='color:#4ade80; font-size:0.8rem;'>BAGUS / JELEK / STABIL</strong></div>
 </div>""".replace('\n', '')
 
 col_b1, col_b2, col_b3 = st.columns(3)

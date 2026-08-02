@@ -71,6 +71,21 @@ def get_stock_data(ticker_symbol):
         company_name = info.get('longName', f"PT {ticker_symbol.replace('.JK', '')} Tbk")
         shares = info.get('sharesOutstanding', "N/A")
         
+        # Ekstraksi Data Fundamental & Kuartal
+        def safe_pct(val): return f"{val * 100:.1f}%" if val and val != "N/A" else "N/A"
+        def safe_num(val): return f"{val:.2f}x" if val and val != "N/A" else "N/A"
+        
+        pe_ratio = safe_num(info.get('trailingPE'))
+        pbv_ratio = safe_num(info.get('priceToBook'))
+        roe = safe_pct(info.get('returnOnEquity'))
+        npm = safe_pct(info.get('profitMargins'))
+        
+        eps_growth_raw = info.get('earningsQuarterlyGrowth')
+        eps_growth = safe_pct(eps_growth_raw)
+        if eps_growth_raw and eps_growth_raw > 0: eps_color = "#4ade80"
+        elif eps_growth_raw and eps_growth_raw < 0: eps_color = "#f87171"
+        else: eps_color = "#9ca3af"
+
         close_prices = hist['Close']
         
         ema9 = close_prices.ewm(span=9, adjust=False).mean().iloc[-1]
@@ -177,7 +192,9 @@ def get_stock_data(ticker_symbol):
             'vpa_stat': vpa_stat, 'vpa_score': vpa_score, 'bb_stat': bb_stat,
             'mtf_status': mtf_status, 'mtf_score': mtf_score,
             'vwap_val': vwap_val, 'vwap_stat': vwap_stat, 'vwap_score': vwap_score,
-            'vcp_stat': vcp_stat, 'vcp_score': vcp_score
+            'vcp_stat': vcp_stat, 'vcp_score': vcp_score,
+            'pe': pe_ratio, 'pbv': pbv_ratio, 'roe': roe, 'npm': npm, 
+            'eps_growth': eps_growth, 'eps_color': eps_color
         }
     except:
         return None
@@ -206,7 +223,6 @@ score += data['fibo_score']
 score += data['vpa_score']
 score += data['vcp_score'] 
 
-# Win Rate Probability Logic
 if score >= 14: win_rate, wr_color = "92% (Sangat Tinggi)", "#4ade80"
 elif score >= 11: win_rate, wr_color = "75% (Tinggi)", "#4ade80"
 elif score >= 7: win_rate, wr_color = "50% (Spekulatif)", "#fbbf24"
@@ -220,15 +236,11 @@ max_shares = max_loss_rp / risk_per_share
 max_lot = int(max_shares / 100)
 if max_lot < 1: max_lot = 0
 
-# Penentuan Status Entry
 if score >= 9: 
-    entry_html = f"<span style='color:#4ade80;'>Entry di <strong>Rp{int(data['price'])}</strong></span>"
     entry_val = f"<span style='color:#4ade80; font-weight:bold;'>Rp{int(data['price'])} (HK)</span>"
 elif score >= 5: 
-    entry_html = f"<span style='color:#fbbf24;'>Antre di <strong>Rp{int(data['sup'])}</strong></span>"
     entry_val = f"<span style='color:#fbbf24; font-weight:bold;'>Rp{int(data['sup'])} (Antre)</span>"
 else: 
-    entry_html = "<span style='color:#f87171; font-weight:bold;'>JANGAN BELI (Wait & See)</span>"
     entry_val = "<span style='color:#f87171; font-weight:bold;'>Wait & See</span>"
 
 
@@ -243,7 +255,6 @@ now_wib = datetime.datetime.now(wib_timezone)
 today_time_str = now_wib.strftime("%d %B %Y, %H:%M WIB") 
 logo_url = f"https://assets.parqet.com/logos/symbol/{ticker_input}.JK?format=png"
 
-# Modifikasi lebar kolom agar lebih proporsional di HP
 col_h1, col_h2, col_h3, col_h4 = st.columns([1.3, 1.2, 1.2, 1.6])
 
 with col_h1:
@@ -271,13 +282,15 @@ with col_h2:
 with col_h3:
     st.markdown("<div style='text-align: right; margin-top: 15px;'>", unsafe_allow_html=True)
     st.markdown("<div style='color:#9ca3af; font-size:0.95rem; font-weight:bold; white-space: nowrap;'>HARGA PENUTUPAN</div>", unsafe_allow_html=True)
-    # FIX BUG WRAPPING HARGA DISINI (Pakai clamp & nowrap)
     st.markdown(f"<div style='color:#f3f4f6; font-size: clamp(2.2rem, 4.5vw, 3.5rem); font-weight: 900; line-height: 1.1; white-space: nowrap;'>Rp{int(data['price'])}</div>", unsafe_allow_html=True)
     st.markdown(f"<div style='color: {color}; font-size: 1.2rem; font-weight: bold; white-space: nowrap;'>{arrow} {data['change']:.2f}%</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 with col_h4:
-    # MINI TRADE PLAN (Sekarang dijamin tidak tumpang tindih)
+    # SATU-SATUNYA TRADE PLAN (Sekarang Fokus di Header Saja)
+    reward = int(data['res']) - int(data['price'])
+    rr_html = f"<div style='background:#1e3a8a; color:white; padding:4px; border-radius:4px; text-align:center; font-weight:bold; font-size:0.75rem; margin-top: 6px;'>⚖️ Risk : Reward = 1 : {round(reward / risk_per_share, 1) if risk_per_share > 0 else 0}</div>"
+    
     st.markdown(f"""
     <div style='background: linear-gradient(145deg, #1f2937, #111827); border: 1px solid #374151; padding: 12px 10px; border-radius: 10px; margin-top: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);'>
         <div style='color:#9ca3af; font-size:0.75rem; font-weight:bold; letter-spacing:1px; margin-bottom: 6px; white-space: nowrap;'>🎯 TRADE PLAN & SNIPER</div>
@@ -290,6 +303,7 @@ with col_h4:
         <div style='display:flex; justify-content: space-between; font-size: 0.9rem;'>
             <span style='color:#d1d5db; white-space: nowrap;'>Stop Loss:</span> <span style='color:#f87171; font-weight:bold; white-space: nowrap;'>Rp{int(data['sup'])}</span>
         </div>
+        {rr_html}
     </div>
     """, unsafe_allow_html=True)
 
@@ -330,11 +344,6 @@ components.html(tradingview_html, height=430)
 # ==========================================
 # --- 3. KOTAK ANALISA (COMPACT 215px) ---
 # ==========================================
-reward = int(data['res']) - int(data['price'])
-rr_html = ""
-if risk_per_share > 0 and reward > 0:
-    rr_html = f"<div style='background:#1e3a8a; color:white; padding:6px; border-radius:6px; text-align:center; font-weight:bold; font-size:0.85rem; margin-top: 8px;'>⚖️ Risk : Reward = 1 : {round(reward / risk_per_share, 1)}</div>"
-
 if max_lot > 0 and score >= 5:
     mm_html = f"<div style='background:#065f46; color:#a7f3d0; padding:10px; border-radius:8px; text-align:center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5);'>🛒 MAKSIMAL BELI:<br><div style='font-size:2rem; font-weight:900; line-height:1.2; margin-top:2px;'>{max_lot} LOT</div></div>"
 else:
@@ -371,10 +380,13 @@ else: kesimpulan_html = f"💀<br><div style='font-size:1.2rem; font-weight:900;
 
 shares_str = f"{data['shares'] / 1e9:.2f} Miliar Lembar" if data['shares'] != "N/A" else "Tidak diketahui"
 
-# Merakit Kotak Ramping (Tinggi 215px)
+
+# BOX 1 BARU: FUNDAMENTAL & GROWTH KUARTAL
 box1 = f"""<div style='height: 215px; display: flex; flex-direction: column;'>
-<div><span style='font-size: 0.95rem; font-weight: bold;'>💰 TRADE PLAN DETAIL</span><br><hr style='margin: 6px 0; border-color:#374151;'><strong>Entry:</strong> {entry_html}<br><span style='color:#f87171;'><strong>Stop Loss:</strong> <span style='font-weight:bold;'>Rp{int(data['sup'])}</span></span></div>
-<div style='margin-top: auto;'><hr style='margin: 6px 0; border-color:#374151;'>🎯 <strong>TARGET:</strong> TP1 <span style='color:#f3f4f6; font-weight:bold;'>Rp{int(data['res'])}</span> | TP2 <span style='color:#f3f4f6; font-weight:bold;'>Rp{int(data['swing_high'])}</span><br>{rr_html}</div>
+<div><span style='font-size: 0.95rem; font-weight: bold;'>💼 FUNDAMENTAL & Q-GROWTH</span><br><hr style='margin: 6px 0; border-color:#374151;'>
+📌 <span style='color:#9ca3af;'>Valuasi (PER / PBV):</span> <strong style='color:#f3f4f6;'>{data['pe']} / {data['pbv']}</strong><br>
+📌 <span style='color:#9ca3af;'>Profit (ROE / NPM):</span> <strong style='color:#f3f4f6;'>{data['roe']} / {data['npm']}</strong></div>
+<div style='margin-top: auto;'><hr style='margin: 6px 0; border-color:#374151;'>📈 <span style='color:#9ca3af;'>EPS Growth (QoQ):</span> <strong style='color:{data['eps_color']}; font-size: 1.05rem;'>{data['eps_growth']}</strong></div>
 </div>""".replace('\n', '')
 
 box2 = f"""<div style='height: 215px; display: flex; flex-direction: column;'>

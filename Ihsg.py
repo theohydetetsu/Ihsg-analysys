@@ -9,8 +9,12 @@ import streamlit.components.v1 as components
 # ==========================================
 st.set_page_config(page_title="HOLY GRAIL ULTIMATE - Quant Sniper", layout="wide")
 
-# CSS PREMIUM
+# CSS PREMIUM (KUNCI DARK MODE PERMANEN)
 st.markdown("""<style>
+.stApp, [data-testid="stAppViewContainer"] {background-color: #020617 !important;}
+[data-testid="stHeader"] {background-color: rgba(0,0,0,0) !important;}
+h1, h2, h3, h4, h5, h6, p, span, li, label, div.stMarkdown, .stText {color: #f3f4f6 !important;}
+[data-baseweb="base-input"] input, [data-baseweb="select"] div {background-color: #111827 !important; color: white !important; border-color: #374151 !important;}
 .block-container {padding-top: 1rem !important; padding-bottom: 1rem !important;}
 header {visibility: hidden;}
 div[data-testid="stVerticalBlockBorderWrapper"] {background-color: #111827 !important; border: 1px solid #374151 !important; border-radius: 12px !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4) !important; padding: 0.8rem !important;}
@@ -21,7 +25,7 @@ st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs
 
 
 # ==========================================
-# --- PANEL KONTROL (AUTO VWAP VERSION) ---
+# --- PANEL KONTROL (AUTO VWAP & VCP) ---
 # ==========================================
 st.markdown("### ⚙️ PANEL KONTROL (ULTIMATE QUANT SNIPER)")
 
@@ -47,14 +51,12 @@ st.markdown("---")
 
 
 # ==========================================
-# --- MESIN KALKULASI DEWA (AUTO-VWAP ENGINE) ---
+# --- MESIN KALKULASI DEWA (VCP ENGINE) ---
 # ==========================================
-@st.cache_data(ttl=120) # Update setiap 2 menit
+@st.cache_data(ttl=120)
 def get_stock_data(ticker_symbol):
     try:
         stock = yf.Ticker(ticker_symbol)
-        
-        # Ambil Data Harian
         hist = stock.history(period="6mo")
         if hist.empty or len(hist) < 60: return None
             
@@ -125,18 +127,30 @@ def get_stock_data(ticker_symbol):
         bw_120_min = bandwidth.tail(120).min()
         bb_stat = "🔥 SQUEEZE (Siaga Meledak)" if bw_latest <= (bw_120_min * 1.25) else "Normal / Ekspansi"
 
-        # ==========================================
-        # MENGHITUNG AUTO-VWAP INTRADAY
-        # ==========================================
+        # --- NEW ENGINE: VCP (VOLATILITY CONTRACTION PATTERN) ---
+        daily_range = hist['High'] - hist['Low']
+        atr_20 = daily_range.rolling(20).mean().iloc[-1]
+        atr_5 = daily_range.rolling(5).mean().iloc[-1]
+        vol_5 = hist['Volume'].rolling(5).mean().iloc[-1]
+        
+        # Syarat VCP: Volatilitas mengecil 20%+, Volume mengering, Tren Uptrend (di atas MA60)
+        if atr_5 < (atr_20 * 0.8) and vol_5 < vol_ma20 and latest_price > sma60:
+            vcp_stat = "🎯 Terdeteksi (Siap Breakout!)"
+            vcp_score = 1
+        elif atr_5 < atr_20:
+            vcp_stat = "⏳ Menyempit (Tahap Formasi)"
+            vcp_score = 0
+        else:
+            vcp_stat = "✖️ Melebar (Bukan VCP)"
+            vcp_score = 0
+
         try:
-            # Mengambil data intraday 5 menitan HARI INI
             intraday = stock.history(period="1d", interval="5m")
             if not intraday.empty and intraday['Volume'].sum() > 0:
                 typical_price = (intraday['High'] + intraday['Low'] + intraday['Close']) / 3
                 vwap_kalkulasi = (typical_price * intraday['Volume']).cumsum() / intraday['Volume'].cumsum()
                 vwap_val = vwap_kalkulasi.iloc[-1]
                 
-                # Toleransi area rebound 0.5%
                 if latest_price > (vwap_val * 1.005):
                     vwap_stat = "Di Atas VWAP (Bullish)"
                     vwap_score = 1
@@ -163,7 +177,8 @@ def get_stock_data(ticker_symbol):
             'fibo_stat': fibo_stat, 'fibo_score': fibo_score,
             'vpa_stat': vpa_stat, 'vpa_score': vpa_score, 'bb_stat': bb_stat,
             'mtf_status': mtf_status, 'mtf_score': mtf_score,
-            'vwap_val': vwap_val, 'vwap_stat': vwap_stat, 'vwap_score': vwap_score
+            'vwap_val': vwap_val, 'vwap_stat': vwap_stat, 'vwap_score': vwap_score,
+            'vcp_stat': vcp_stat, 'vcp_score': vcp_score
         }
     except:
         return None
@@ -175,21 +190,22 @@ if data is None:
 
 
 # ==========================================
-# --- ALGORITMA PENILAIAN QUANT SKOR (MAX 15) ---
+# --- ALGORITMA PENILAIAN QUANT SKOR (MAX 16) ---
 # ==========================================
 score = 0
 if data['trend'] == "Bullish": score += 2
-score += data['mtf_score']                          # MTF Matrix (Max 2)
+score += data['mtf_score']                          
 if "Akumulasi" in status_bandar: score += 3
 elif "Netral" in status_bandar: score += 1
 if "BID" in status_bidoffer: score += 2
 elif "Berimbang" in status_bidoffer: score += 1
-if "NET BUY" in status_asing: score += 2            # Foreign Flow (Max 2)
+if "NET BUY" in status_asing: score += 2            
 elif "Neutral" in status_asing: score += 1
-score += data['vwap_score']                         # Auto VWAP (Max 1)
+score += data['vwap_score']                         
 if data['rsi_status'] in ["Netral", "Oversold"]: score += 1
 score += data['fibo_score']
 score += data['vpa_score']
+score += data['vcp_score'] # ENGINE BARU VCP (+1 POIN)
 
 
 # ==========================================
@@ -229,15 +245,15 @@ with col_h1:
 
 with col_h2:
     st.markdown("<div style='text-align: center; margin-top: 15px;'>", unsafe_allow_html=True)
-    if score >= 12:
+    if score >= 13:
         st.markdown("<div style='color:#4ade80; font-size: 1.8rem; font-weight:900;'>GOD MODE BUY</div><div style='font-size: 1.5rem;'>⭐⭐⭐⭐⭐</div>", unsafe_allow_html=True)
-    elif score >= 8:
+    elif score >= 9:
         st.markdown("<div style='color:#4ade80; font-size: 1.8rem; font-weight:900;'>STRONG BUY</div><div style='font-size: 1.5rem;'>⭐⭐⭐⭐</div>", unsafe_allow_html=True)
     elif score >= 5:
         st.markdown("<div style='color:#fbbf24; font-size: 1.8rem; font-weight:900;'>HOLD / WAIT</div><div style='font-size: 1.5rem;'>⭐⭐⭐</div>", unsafe_allow_html=True)
     else:
         st.markdown("<div style='color:#f87171; font-size: 1.8rem; font-weight:900;'>SELL / AVOID</div><div style='font-size: 1.5rem;'>⭐</div>", unsafe_allow_html=True)
-    st.markdown(f"<div style='color:#fbbf24; font-size: 2.8rem; font-weight: 900; margin-top: 5px;'>🌟 {score}.0 <span style='font-size:1.4rem; color:#9ca3af;'>/15</span></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='color:#fbbf24; font-size: 2.8rem; font-weight: 900; margin-top: 5px;'>🌟 {score}.0 <span style='font-size:1.4rem; color:#9ca3af;'>/16</span></div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 with col_h3:
@@ -285,7 +301,7 @@ components.html(tradingview_html, height=430)
 # ==========================================
 # --- 3. KOTAK ANALISA (ELEGAN & FONT BESAR KONTRAST) ---
 # ==========================================
-if score >= 8: entry_html = f"<span style='color:#4ade80;'>Entry di <strong><span style='font-size:1.15rem;'>Rp{int(data['price'])}</span></strong></span>"
+if score >= 9: entry_html = f"<span style='color:#4ade80;'>Entry di <strong><span style='font-size:1.15rem;'>Rp{int(data['price'])}</span></strong></span>"
 elif score >= 5: entry_html = f"<span style='color:#fbbf24;'>Antre Support di <strong><span style='font-size:1.15rem;'>Rp{int(data['sup'])}</span></strong></span>"
 else: entry_html = "<span style='color:#f87171; font-weight:bold;'>JANGAN BELI (Wait & See)</span>"
 
@@ -310,19 +326,21 @@ if "NET BUY" in status_asing: asing_html = "Asing: <span style='color:#4ade80; f
 elif "NET SELL" in status_asing: asing_html = "Asing: <span style='color:#f87171; font-weight:bold; font-size:1.05rem;'>NET SELL (Keluar)</span>"
 else: asing_html = "Asing: <span style='color:#fbbf24; font-weight:bold; font-size:1.05rem;'>Netral / Mixed</span>"
 
-# VWAP OUTPUT OTOMATIS
 vwap_color = "#4ade80" if data['vwap_score'] == 1 else "#f87171"
 if data['vwap_val'] > 0:
     vwap_html = f"Auto-VWAP: <span style='color:{vwap_color}; font-weight:bold; font-size:1.05rem;'>Rp{int(data['vwap_val'])} ({data['vwap_stat']})</span>"
 else:
     vwap_html = f"Auto-VWAP: <span style='color:#9ca3af; font-weight:bold; font-size:1.05rem;'>Menunggu Data Intraday...</span>"
 
-
 vpa_bg = "#065f46; color:#a7f3d0;" if data['vpa_score'] == 1 else "#78350f; color:#fde68a;"
 vpa_html = f"<div style='background:{vpa_bg}; padding:6px 12px; border-radius:6px; margin-top:12px; display:inline-block; font-weight:bold; font-size:1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);'>📊 VPA: {data['vpa_stat']}</div>"
 
-if score >= 12: kesimpulan_html = f"⚡<br><div style='font-size:1.4rem; font-weight:900; color:#4ade80; margin: 10px 0;'>GOD MODE SNIPER!<br>{ticker_input} SIAP TERBANG</div><span style='color:#a3a8b4; font-size:1rem;'>Semua Engine Selaras.</span>"
-elif score >= 8: kesimpulan_html = f"🔥<br><div style='font-size:1.4rem; font-weight:900; color:#4ade80; margin: 10px 0;'>{ticker_input}<br>HIGH PROBABILITY</div><span style='color:#a3a8b4; font-size:1rem;'>Sinyal Sangat Kuat.</span>"
+if data['vcp_score'] == 1: vcp_color = "#4ade80"
+elif "Menyempit" in data['vcp_stat']: vcp_color = "#fbbf24"
+else: vcp_color = "#9ca3af"
+
+if score >= 13: kesimpulan_html = f"⚡<br><div style='font-size:1.4rem; font-weight:900; color:#4ade80; margin: 10px 0;'>GOD MODE SNIPER!<br>{ticker_input} SIAP TERBANG</div><span style='color:#a3a8b4; font-size:1rem;'>Semua Engine Selaras.</span>"
+elif score >= 9: kesimpulan_html = f"🔥<br><div style='font-size:1.4rem; font-weight:900; color:#4ade80; margin: 10px 0;'>{ticker_input}<br>HIGH PROBABILITY</div><span style='color:#a3a8b4; font-size:1rem;'>Sinyal Sangat Kuat.</span>"
 elif score >= 5: kesimpulan_html = f"⚠️<br><div style='font-size:1.4rem; font-weight:900; color:#fbbf24; margin: 10px 0;'>PANTAU KETAT<br>{ticker_input}</div><span style='color:#a3a8b4; font-size:1rem;'>Sinyal Moderat.</span>"
 else: kesimpulan_html = f"💀<br><div style='font-size:1.4rem; font-weight:900; color:#f87171; margin: 10px 0;'>JAUHI {ticker_input}<br>SEMENTARA</div><span style='color:#a3a8b4; font-size:1rem;'>Risiko Tinggi / Distribusi.</span>"
 
@@ -354,7 +372,7 @@ box5 = f"""<div style='height: 270px; display: flex; flex-direction: column;'>
 </div>""".replace('\n', '')
 
 box6 = f"""<div style='height: 270px; display: flex; flex-direction: column;'>
-<div><span style='font-size: 1rem; font-weight: bold;'>📊 TEKNIKAL & INFO</span><br><hr style='margin: 8px 0; border-color:#374151;'>📌 <span style='color:#9ca3af;'>EMA Cross:</span> <strong>{data['ema_cross']}</strong><br>📌 <span style='color:#9ca3af;'>RSI (14):</span> <strong style='font-size:1.05rem;'>{data['rsi_val']:.1f} ({data['rsi_status']})</strong></div>
+<div><span style='font-size: 1rem; font-weight: bold;'>📊 TEKNIKAL & PRICE ACTION</span><br><hr style='margin: 8px 0; border-color:#374151;'>📌 <span style='color:#9ca3af;'>EMA Cross:</span> <strong>{data['ema_cross']}</strong><br>📌 <span style='color:#9ca3af;'>RSI (14):</span> <strong style='font-size:1.05rem;'>{data['rsi_val']:.1f} ({data['rsi_status']})</strong><br>📌 <span style='color:#9ca3af;'>Pola VCP:</span> <strong style='font-size:1.05rem; color:{vcp_color};'>{data['vcp_stat']}</strong></div>
 <div style='margin-top: auto;'><hr style='margin: 8px 0; border-color:#374151;'>👥 <span style='color:#9ca3af;'>Saham Beredar:</span><br><strong style='font-size:1.1rem; color:#f3f4f6;'>{shares_str}</strong></div>
 </div>""".replace('\n', '')
 

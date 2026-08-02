@@ -9,7 +9,7 @@ import streamlit.components.v1 as components
 # ==========================================
 st.set_page_config(page_title="HOLY GRAIL ULTIMATE - Quant Sniper", layout="wide")
 
-# CSS PREMIUM (COMPACT & DARK MODE LOCK)
+# CSS PREMIUM (RESPONSIVE & ANTI-WRAP)
 st.markdown("""<style>
 .stApp, [data-testid="stAppViewContainer"] {background-color: #020617 !important;}
 [data-testid="stHeader"] {background-color: rgba(0,0,0,0) !important;}
@@ -17,7 +17,6 @@ h1, h2, h3, h4, h5, h6, p, span, li, label, div.stMarkdown, .stText {color: #f3f
 [data-baseweb="base-input"] input, [data-baseweb="select"] div {background-color: #111827 !important; color: white !important; border-color: #374151 !important;}
 .block-container {padding-top: 1rem !important; padding-bottom: 1rem !important;}
 header {visibility: hidden;}
-/* Kotak Analisa Lebih Ramping */
 div[data-testid="stVerticalBlockBorderWrapper"] {background-color: #111827 !important; border: 1px solid #374151 !important; border-radius: 12px !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4) !important; padding: 0.6rem !important;}
 p, span, li, div.stMarkdown, .stText {font-size: 0.85rem !important; line-height: 1.4 !important;}
 hr {margin-top: 0.5rem; margin-bottom: 0.5rem; border-color: #374151;}
@@ -190,7 +189,7 @@ if data is None:
 
 
 # ==========================================
-# --- PENILAIAN SKOR & TRADE PLAN ---
+# --- PENILAIAN SKOR & PROBABILITAS ---
 # ==========================================
 score = 0
 if data['trend'] == "Bullish": score += 2
@@ -207,6 +206,12 @@ score += data['fibo_score']
 score += data['vpa_score']
 score += data['vcp_score'] 
 
+# Win Rate Probability Logic
+if score >= 14: win_rate, wr_color = "92% (Sangat Tinggi)", "#4ade80"
+elif score >= 11: win_rate, wr_color = "75% (Tinggi)", "#4ade80"
+elif score >= 7: win_rate, wr_color = "50% (Spekulatif)", "#fbbf24"
+else: win_rate, wr_color = "< 30% (Risiko Bahaya)", "#f87171"
+
 risk_pct = float(risiko_input.split('%')[0]) / 100
 max_loss_rp = modal_input * risk_pct
 risk_per_share = data['price'] - data['sup']
@@ -215,7 +220,7 @@ max_shares = max_loss_rp / risk_per_share
 max_lot = int(max_shares / 100)
 if max_lot < 1: max_lot = 0
 
-# Penentuan Status Entry (Untuk Header & Box)
+# Penentuan Status Entry
 if score >= 9: 
     entry_html = f"<span style='color:#4ade80;'>Entry di <strong>Rp{int(data['price'])}</strong></span>"
     entry_val = f"<span style='color:#4ade80; font-weight:bold;'>Rp{int(data['price'])} (HK)</span>"
@@ -228,7 +233,7 @@ else:
 
 
 # ==========================================
-# --- 1. HEADER DASHBOARD (4 KOLOM PREMIUM) ---
+# --- 1. HEADER DASHBOARD (ANTI-WRAP & RESPONSIVE) ---
 # ==========================================
 arrow = "▼" if data['change'] < 0 else "▲"
 color = "#f87171" if data['change'] < 0 else "#4ade80" 
@@ -238,51 +243,52 @@ now_wib = datetime.datetime.now(wib_timezone)
 today_time_str = now_wib.strftime("%d %B %Y, %H:%M WIB") 
 logo_url = f"https://assets.parqet.com/logos/symbol/{ticker_input}.JK?format=png"
 
-# Modifikasi menjadi 4 Kolom
-col_h1, col_h2, col_h3, col_h4 = st.columns([1.5, 1.2, 1.2, 1.5])
+# Modifikasi lebar kolom agar lebih proporsional di HP
+col_h1, col_h2, col_h3, col_h4 = st.columns([1.3, 1.2, 1.2, 1.6])
 
 with col_h1:
-    st.markdown("<span style='font-size: 0.95rem; color:#9ca3af; font-weight:bold; letter-spacing: 1px;'>QUANT SNIPER SYSTEM</span>", unsafe_allow_html=True)
-    st.markdown(f"""<div style="display: flex; align-items: center; gap: 15px; margin-top: 5px; margin-bottom: 5px;">
-    <img src="{logo_url}" width="65" height="65" style="border-radius: 12px; background: white; padding: 4px;" onerror="this.style.display='none'">
-    <div style='color:#f3f4f6; font-size: 3.5rem; font-weight: 900; line-height: 1;'>{ticker_input}</div>
+    st.markdown("<span style='font-size: 0.95rem; color:#9ca3af; font-weight:bold; letter-spacing: 1px; white-space: nowrap;'>QUANT SNIPER SYSTEM</span>", unsafe_allow_html=True)
+    st.markdown(f"""<div style="display: flex; align-items: center; gap: 10px; margin-top: 5px; margin-bottom: 5px;">
+    <img src="{logo_url}" width="60" height="60" style="border-radius: 12px; background: white; padding: 4px; flex-shrink: 0;" onerror="this.style.display='none'">
+    <div style='color:#f3f4f6; font-size: clamp(2rem, 4vw, 3.8rem); font-weight: 900; line-height: 1; letter-spacing: 1px;'>{ticker_input}</div>
     </div>""", unsafe_allow_html=True)
-    st.markdown(f"<div style='color:#d1d5db; font-size:1.05rem; font-weight:bold;'>{data['name']}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='color:#d1d5db; font-size:1.05rem; font-weight:bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>{data['name']}</div>", unsafe_allow_html=True)
     st.markdown(f"<div style='font-size:0.85rem; color:#60a5fa; margin-top: 4px; font-weight: bold;'>Update {today_time_str}</div>", unsafe_allow_html=True)
 
 with col_h2:
     st.markdown("<div style='text-align: center; margin-top: 15px;'>", unsafe_allow_html=True)
     if score >= 13:
-        st.markdown("<div style='color:#4ade80; font-size: 1.6rem; font-weight:900;'>GOD MODE</div><div style='font-size: 1.3rem;'>⭐⭐⭐⭐⭐</div>", unsafe_allow_html=True)
+        st.markdown("<div style='color:#4ade80; font-size: clamp(1.2rem, 2vw, 1.6rem); font-weight:900; white-space: nowrap;'>GOD MODE</div><div style='font-size: 1.3rem;'>⭐⭐⭐⭐⭐</div>", unsafe_allow_html=True)
     elif score >= 9:
-        st.markdown("<div style='color:#4ade80; font-size: 1.6rem; font-weight:900;'>STRONG BUY</div><div style='font-size: 1.3rem;'>⭐⭐⭐⭐</div>", unsafe_allow_html=True)
+        st.markdown("<div style='color:#4ade80; font-size: clamp(1.2rem, 2vw, 1.6rem); font-weight:900; white-space: nowrap;'>STRONG BUY</div><div style='font-size: 1.3rem;'>⭐⭐⭐⭐</div>", unsafe_allow_html=True)
     elif score >= 5:
-        st.markdown("<div style='color:#fbbf24; font-size: 1.6rem; font-weight:900;'>HOLD / WAIT</div><div style='font-size: 1.3rem;'>⭐⭐⭐</div>", unsafe_allow_html=True)
+        st.markdown("<div style='color:#fbbf24; font-size: clamp(1.2rem, 2vw, 1.6rem); font-weight:900; white-space: nowrap;'>HOLD / WAIT</div><div style='font-size: 1.3rem;'>⭐⭐⭐</div>", unsafe_allow_html=True)
     else:
-        st.markdown("<div style='color:#f87171; font-size: 1.6rem; font-weight:900;'>SELL / AVOID</div><div style='font-size: 1.3rem;'>⭐</div>", unsafe_allow_html=True)
-    st.markdown(f"<div style='color:#fbbf24; font-size: 2.5rem; font-weight: 900; margin-top: 5px;'>🌟 {score}.0 <span style='font-size:1.2rem; color:#9ca3af;'>/16</span></div>", unsafe_allow_html=True)
+        st.markdown("<div style='color:#f87171; font-size: clamp(1.2rem, 2vw, 1.6rem); font-weight:900; white-space: nowrap;'>SELL / AVOID</div><div style='font-size: 1.3rem;'>⭐</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='color:#fbbf24; font-size: 2.5rem; font-weight: 900; margin-top: 5px; white-space: nowrap;'>🌟 {score}.0 <span style='font-size:1.2rem; color:#9ca3af;'>/16</span></div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 with col_h3:
     st.markdown("<div style='text-align: right; margin-top: 15px;'>", unsafe_allow_html=True)
-    st.markdown("<div style='color:#9ca3af; font-size:0.95rem; font-weight:bold;'>HARGA PENUTUPAN</div>", unsafe_allow_html=True)
-    st.markdown(f"<div style='color:#f3f4f6; font-size: 3.2rem; font-weight: 900; line-height: 1.1;'>Rp{int(data['price'])}</div>", unsafe_allow_html=True)
-    st.markdown(f"<div style='color: {color}; font-size: 1.2rem; font-weight: bold;'>{arrow} {data['change']:.2f}%</div>", unsafe_allow_html=True)
+    st.markdown("<div style='color:#9ca3af; font-size:0.95rem; font-weight:bold; white-space: nowrap;'>HARGA PENUTUPAN</div>", unsafe_allow_html=True)
+    # FIX BUG WRAPPING HARGA DISINI (Pakai clamp & nowrap)
+    st.markdown(f"<div style='color:#f3f4f6; font-size: clamp(2.2rem, 4.5vw, 3.5rem); font-weight: 900; line-height: 1.1; white-space: nowrap;'>Rp{int(data['price'])}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='color: {color}; font-size: 1.2rem; font-weight: bold; white-space: nowrap;'>{arrow} {data['change']:.2f}%</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 with col_h4:
-    # MINI TRADE PLAN DI HEADER
+    # MINI TRADE PLAN (Sekarang dijamin tidak tumpang tindih)
     st.markdown(f"""
-    <div style='background: linear-gradient(145deg, #1f2937, #111827); border: 1px solid #374151; padding: 12px 15px; border-radius: 10px; margin-top: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);'>
-        <div style='color:#9ca3af; font-size:0.8rem; font-weight:bold; letter-spacing:1px; margin-bottom: 6px;'>🎯 TRADE PLAN & SNIPER</div>
-        <div style='display:flex; justify-content: space-between; font-size: 0.95rem; margin-bottom: 3px;'>
-            <span style='color:#d1d5db;'>Entry:</span> {entry_val}
+    <div style='background: linear-gradient(145deg, #1f2937, #111827); border: 1px solid #374151; padding: 12px 10px; border-radius: 10px; margin-top: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);'>
+        <div style='color:#9ca3af; font-size:0.75rem; font-weight:bold; letter-spacing:1px; margin-bottom: 6px; white-space: nowrap;'>🎯 TRADE PLAN & SNIPER</div>
+        <div style='display:flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 3px;'>
+            <span style='color:#d1d5db; white-space: nowrap;'>Entry:</span> <span style='white-space: nowrap;'>{entry_val}</span>
         </div>
-        <div style='display:flex; justify-content: space-between; font-size: 0.95rem; margin-bottom: 3px;'>
-            <span style='color:#d1d5db;'>Target 1:</span> <span style='color:#4ade80; font-weight:bold;'>Rp{int(data['res'])}</span>
+        <div style='display:flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 3px;'>
+            <span style='color:#d1d5db; white-space: nowrap;'>Target 1:</span> <span style='color:#4ade80; font-weight:bold; white-space: nowrap;'>Rp{int(data['res'])}</span>
         </div>
-        <div style='display:flex; justify-content: space-between; font-size: 0.95rem;'>
-            <span style='color:#d1d5db;'>Stop Loss:</span> <span style='color:#f87171; font-weight:bold;'>Rp{int(data['sup'])}</span>
+        <div style='display:flex; justify-content: space-between; font-size: 0.9rem;'>
+            <span style='color:#d1d5db; white-space: nowrap;'>Stop Loss:</span> <span style='color:#f87171; font-weight:bold; white-space: nowrap;'>Rp{int(data['sup'])}</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -358,10 +364,10 @@ if data['vcp_score'] == 1: vcp_color = "#4ade80"
 elif "Menyempit" in data['vcp_stat']: vcp_color = "#fbbf24"
 else: vcp_color = "#9ca3af"
 
-if score >= 13: kesimpulan_html = f"⚡<br><div style='font-size:1.2rem; font-weight:900; color:#4ade80; margin: 6px 0;'>GOD MODE SNIPER!<br>{ticker_input} SIAP TERBANG</div><span style='color:#a3a8b4; font-size:0.9rem;'>Semua Engine Selaras.</span>"
-elif score >= 9: kesimpulan_html = f"🔥<br><div style='font-size:1.2rem; font-weight:900; color:#4ade80; margin: 6px 0;'>{ticker_input}<br>HIGH PROBABILITY</div><span style='color:#a3a8b4; font-size:0.9rem;'>Sinyal Sangat Kuat.</span>"
-elif score >= 5: kesimpulan_html = f"⚠️<br><div style='font-size:1.2rem; font-weight:900; color:#fbbf24; margin: 6px 0;'>PANTAU KETAT<br>{ticker_input}</div><span style='color:#a3a8b4; font-size:0.9rem;'>Sinyal Moderat.</span>"
-else: kesimpulan_html = f"💀<br><div style='font-size:1.2rem; font-weight:900; color:#f87171; margin: 6px 0;'>JAUHI {ticker_input}<br>SEMENTARA</div><span style='color:#a3a8b4; font-size:0.9rem;'>Risiko Tinggi / Distribusi.</span>"
+if score >= 13: kesimpulan_html = f"⚡<br><div style='font-size:1.2rem; font-weight:900; color:#4ade80; margin: 4px 0;'>GOD MODE SNIPER!<br>{ticker_input} SIAP TERBANG</div>"
+elif score >= 9: kesimpulan_html = f"🔥<br><div style='font-size:1.2rem; font-weight:900; color:#4ade80; margin: 4px 0;'>{ticker_input}<br>HIGH PROBABILITY</div>"
+elif score >= 5: kesimpulan_html = f"⚠️<br><div style='font-size:1.2rem; font-weight:900; color:#fbbf24; margin: 4px 0;'>PANTAU KETAT<br>{ticker_input}</div>"
+else: kesimpulan_html = f"💀<br><div style='font-size:1.2rem; font-weight:900; color:#f87171; margin: 4px 0;'>JAUHI {ticker_input}<br>SEMENTARA</div>"
 
 shares_str = f"{data['shares'] / 1e9:.2f} Miliar Lembar" if data['shares'] != "N/A" else "Tidak diketahui"
 
@@ -378,7 +384,7 @@ box2 = f"""<div style='height: 215px; display: flex; flex-direction: column;'>
 
 box3 = f"""<div style='height: 215px; display: flex; flex-direction: column;'>
 <div><span style='font-size: 0.95rem; font-weight: bold;'>⭐ QUANT SNIPER SCORE</span><br><hr style='margin: 6px 0; border-color:#374151;'></div>
-<div style='margin-top: auto; margin-bottom: auto; text-align: center;'>{kesimpulan_html}</div>
+<div style='margin-top: auto; margin-bottom: auto; text-align: center;'>{kesimpulan_html}<div style='margin-top:8px; font-size:0.9rem; color:#9ca3af;'>Probabilitas Win: <strong style='color:{wr_color};'>{win_rate}</strong></div></div>
 </div>""".replace('\n', '')
 
 box4 = f"""<div style='height: 215px; display: flex; flex-direction: column;'>

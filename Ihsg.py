@@ -24,25 +24,27 @@ hr {margin-top: 0.4rem; margin-bottom: 0.4rem; border-color: #374151;}
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', unsafe_allow_html=True)
 
 # ==========================================
-# --- PANEL KONTROL ---
+# --- PANEL KONTROL (TAMBAHAN HARGA MANUAL) ---
 # ==========================================
 st.markdown("### ⚙️ PANEL KONTROL (ULTIMATE QUANT SNIPER)")
 
-col_in1, col_in2, col_in3 = st.columns(3)
+col_in1, col_in2, col_in3, col_in4 = st.columns(4)
 with col_in1:
-    ticker_input = st.text_input("🔍 1. Kode Saham (Ketik & Enter):", "BBCA").upper().strip()
+    ticker_input = st.text_input("🔍 1. Kode Saham:", "BBCA").upper().strip()
 with col_in2:
-    status_bandar = st.selectbox("🕵️‍♂️ 2. Bandarmology (Manual):", ["Akumulasi (Net Buy)", "Netral / Sepi", "Distribusi (Net Sell)"])
+    manual_price_input = st.number_input("🎯 2. Harga Real-Time (Opsional):", min_value=0, value=0, step=1, help="Isi dengan harga Stockbit jika Yahoo Finance error/telat.")
 with col_in3:
-    status_bidoffer = st.selectbox("⚖️ 3. Bid & Offer (Manual):", ["Dominan BID (Demand Kuat)", "Berimbang (Normal)", "Dominan OFFER (Supply Kuat)"])
+    status_bandar = st.selectbox("🕵️‍♂️ 3. Bandar:", ["Akumulasi (Net Buy)", "Netral / Sepi", "Distribusi (Net Sell)"])
+with col_in4:
+    status_bidoffer = st.selectbox("⚖️ 4. Bid & Offer:", ["Dominan BID (Demand Kuat)", "Berimbang (Normal)", "Dominan OFFER (Supply Kuat)"])
 
 col_cf1, col_cf2, col_cf3 = st.columns(3)
 with col_cf1:
-    status_asing = st.selectbox("🦅 4. Jejak Dana Asing (Foreign Flow):", ["Asing NET BUY (Masuk Besar)", "Asing Netral / Mixed", "Asing NET SELL (Keluar)"])
+    status_asing = st.selectbox("🦅 5. Asing (Foreign Flow):", ["Asing NET BUY (Masuk Besar)", "Asing Netral / Mixed", "Asing NET SELL (Keluar)"])
 with col_cf2:
-    modal_input = st.number_input("💰 5. Modal Trading Anda (Rp):", min_value=100000, value=10000000, step=1000000)
+    modal_input = st.number_input("💰 6. Modal Trading (Rp):", min_value=100000, value=10000000, step=1000000)
 with col_cf3:
-    risiko_input = st.selectbox("🛡️ 6. Toleransi Risiko (Cutloss):", ["1% dari Modal (Sangat Konservatif)", "2% dari Modal (Standar Pro)", "3% dari Modal (Agresif)", "5% dari Modal (Sangat Agresif)"], index=1)
+    risiko_input = st.selectbox("🛡️ 7. Toleransi Risiko (Cutloss):", ["1% dari Modal (Sangat Konservatif)", "2% dari Modal (Standar Pro)", "3% dari Modal (Agresif)", "5% dari Modal (Sangat Agresif)"], index=1)
 
 ticker_yf = f"{ticker_input}.JK"
 ticker_tv = f"IDX:{ticker_input}"
@@ -51,20 +53,28 @@ st.markdown("---")
 # ==========================================
 # --- MESIN KALKULASI DEWA ---
 # ==========================================
-@st.cache_data(ttl=120)
-def get_stock_data(ticker_symbol):
+@st.cache_data(ttl=60)
+def get_stock_data(ticker_symbol, manual_price=0):
     try:
         stock = yf.Ticker(ticker_symbol)
         hist = stock.history(period="6mo")
         hist = hist.dropna(subset=['Close', 'High', 'Low', 'Volume'])
         
         if hist.empty or len(hist) < 60: return None
-            
-        latest_price = hist['Close'].iloc[-1]
-        prev_price = hist['Close'].iloc[-2]
-        change_pct = ((latest_price - prev_price) / prev_price) * 100
-        info = stock.info
         
+        # LOGIKA HARGA MANUAL (OVERRIDE YF DELAY)
+        if manual_price > 0:
+            latest_price = float(manual_price)
+            prev_price = hist['Close'].iloc[-1]
+            if prev_price == latest_price and len(hist) > 1:
+                prev_price = hist['Close'].iloc[-2]
+            change_pct = ((latest_price - prev_price) / prev_price) * 100
+        else:
+            latest_price = hist['Close'].iloc[-1]
+            prev_price = hist['Close'].iloc[-2]
+            change_pct = ((latest_price - prev_price) / prev_price) * 100
+            
+        info = stock.info
         company_name = info.get('longName', f"PT {ticker_symbol.replace('.JK', '')} Tbk")
         
         def safe_pct(val): return val if val is not None else 0
@@ -118,14 +128,14 @@ def get_stock_data(ticker_symbol):
         close_prices = hist['Close']
         ema9 = close_prices.ewm(span=9, adjust=False).mean().iloc[-1]
         ema21 = close_prices.ewm(span=21, adjust=False).mean().iloc[-1]
-        ema_cross = "Bullish" if ema9 > ema21 else "Bearish"
+        ema_cross = "Bullish" if latest_price > ema21 else "Bearish"
         trend_status = "Bullish" if latest_price > ema21 else "Bearish"
         
         sma5 = close_prices.rolling(5).mean().iloc[-1]
         sma20 = close_prices.rolling(20).mean().iloc[-1]
         sma60 = close_prices.rolling(60).mean().iloc[-1]
         
-        if latest_price > sma5 and sma5 > sma20 and sma20 > sma60: mtf_status, mtf_score = "ALIGNMENT BULLISH", 2
+        if latest_price > sma5 and latest_price > sma20 and latest_price > sma60: mtf_status, mtf_score = "ALIGNMENT BULLISH", 2
         elif latest_price > sma20: mtf_status, mtf_score = "MODERATE (Campur)", 1
         else: mtf_status, mtf_score = "DEAD CROSS (Bearish)", 0
 
@@ -141,7 +151,9 @@ def get_stock_data(ticker_symbol):
         else: rsi_status = "Netral"
         
         res_terdekat = hist['High'].tail(20).max()
+        if latest_price > res_terdekat: res_terdekat = latest_price * 1.05
         sup_terdekat = hist['Low'].tail(20).min()
+        if latest_price < sup_terdekat: sup_terdekat = latest_price * 0.95
         
         swing_high = hist['High'].tail(60).max()
         swing_low = hist['Low'].tail(60).min()
@@ -199,13 +211,12 @@ def get_stock_data(ticker_symbol):
     except:
         return None
 
-data = get_stock_data(ticker_yf)
+# KUNCI UTAMA: MEMASUKKAN HARGA MANUAL KE DALAM MESIN DATA
+data = get_stock_data(ticker_yf, manual_price_input)
 if data is None:
     st.error(f"❌ Saham **{ticker_input}** tidak valid atau data kurang.")
     st.stop()
 
-
-# --- SAFE INT HELPER ---
 def s_int(val):
     try: return int(val) if pd.notna(val) else 0
     except: return 0
@@ -470,7 +481,7 @@ with tab_screener:
     components.html("""
     <div class="tradingview-widget-container" style="height: 700px; width: 100%;">
       <div class="tradingview-widget-container__widget" style="height: 100%; width: 100%;"></div>
-      <script type="text/javascript" src="https://s3.tradingtext/external-embedding/embed-widget-screener.js" async>
+      <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>
       { "width": "100%", "height": "700", "defaultColumn": "overview", "defaultScreen": "general", "market": "indonesia", "showToolbar": true, "colorTheme": "dark", "locale": "id", "isTransparent": true }
       </script>
     </div>

@@ -228,13 +228,24 @@ elif score >= 11: win_rate, wr_color = "75% (Tinggi)", "#4ade80"
 elif score >= 7: win_rate, wr_color = "50% (Spekulatif)", "#fbbf24"
 else: win_rate, wr_color = "< 30% (Risiko Bahaya)", "#f87171"
 
+# --- VAKSIN ANTI-ERROR (SAFETY NET) ---
 risk_pct = float(risiko_input.split('%')[0]) / 100
 max_loss_rp = modal_input * risk_pct
 risk_per_share = data['price'] - data['sup']
-if risk_per_share <= 0: risk_per_share = data['price'] * 0.02 
+if pd.isna(risk_per_share) or risk_per_share <= 0: 
+    risk_per_share = data['price'] * 0.02 
 max_shares = max_loss_rp / risk_per_share
-max_lot = int(max_shares / 100)
+
+try:
+    if pd.isna(max_shares):
+        max_lot = 0
+    else:
+        max_lot = int(max_shares / 100)
+except (ValueError, OverflowError):
+    max_lot = 0
+
 if max_lot < 1: max_lot = 0
+# --------------------------------------
 
 if score >= 9: entry_val = f"<span style='color:#4ade80; font-weight:bold;'>Rp{int(data['price'])} (HK)</span>"
 elif score >= 5: entry_val = f"<span style='color:#fbbf24; font-weight:bold;'>Rp{int(data['sup'])} (Antre)</span>"
@@ -287,7 +298,7 @@ with col_h4:
     
     st.markdown(f"""
     <div style='background: linear-gradient(145deg, #1f2937, #111827); border: 1px solid #374151; padding: 10px; border-radius: 10px; margin-top: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);'>
-        <div style='color:#9ca3af; font-size:0.75rem; font-weight:bold; letter-spacing:1px; margin-bottom: 6px; white-space: nowrap;'>🎯 TRADE PLAN</div>
+        <div style='color:#9ca3af; font-size:0.75rem; font-weight:bold; letter-spacing:1px; margin-bottom: 6px; white-space: nowrap;'>🎯 TRADE PLAN & SNIPER</div>
         <div style='display:flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 2px;'>
             <span style='color:#d1d5db;'>Entry:</span> <span>{entry_val}</span>
         </div>

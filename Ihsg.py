@@ -56,8 +56,6 @@ def get_stock_data(ticker_symbol):
     try:
         stock = yf.Ticker(ticker_symbol)
         hist = stock.history(period="6mo")
-        
-        # VAKSIN 1: HAPUS SEMUA DATA KOSONG DARI YAHOO FINANCE
         hist = hist.dropna(subset=['Close', 'High', 'Low', 'Volume'])
         
         if hist.empty or len(hist) < 60: return None
@@ -188,8 +186,9 @@ def get_stock_data(ticker_symbol):
         return {
             'price': latest_price, 'change': change_pct, 'name': company_name,
             'res': res_terdekat, 'sup': sup_terdekat, 'swing_high': swing_high,
+            'fibo_618': fibo_618, 'fibo_stat': fibo_stat, 'fibo_score': fibo_score, 
             'ema_cross': ema_cross, 'trend': trend_status, 'rsi_val': rsi_val, 'rsi_status': rsi_status,
-            'fibo_stat': fibo_stat, 'fibo_score': fibo_score, 'vpa_stat': vpa_stat, 'vpa_score': vpa_score,
+            'vpa_stat': vpa_stat, 'vpa_score': vpa_score,
             'mtf_status': mtf_status, 'mtf_score': mtf_score, 'vwap_val': vwap_val, 'vwap_stat': vwap_stat, 'vwap_score': vwap_score,
             'vcp_stat': vcp_stat, 'vcp_score': vcp_score,
             'pe_str': pe_str, 'pbv_str': pbv_str, 'roe_str': roe_str, 'npm_str': npm_str, 'eps_g_str': eps_g_str,
@@ -206,7 +205,7 @@ if data is None:
     st.stop()
 
 
-# --- VAKSIN 2: PENGAMAN ANGKA HARGA (SAFE_INT) ---
+# --- SAFE INT HELPER ---
 def s_int(val):
     try: return int(val) if pd.notna(val) else 0
     except: return 0
@@ -471,7 +470,7 @@ with tab_screener:
     components.html("""
     <div class="tradingview-widget-container" style="height: 700px; width: 100%;">
       <div class="tradingview-widget-container__widget" style="height: 100%; width: 100%;"></div>
-      <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>
+      <script type="text/javascript" src="https://s3.tradingtext/external-embedding/embed-widget-screener.js" async>
       { "width": "100%", "height": "700", "defaultColumn": "overview", "defaultScreen": "general", "market": "indonesia", "showToolbar": true, "colorTheme": "dark", "locale": "id", "isTransparent": true }
       </script>
     </div>

@@ -24,7 +24,7 @@ hr {margin-top: 0.4rem; margin-bottom: 0.4rem; border-color: #374151;}
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', unsafe_allow_html=True)
 
 # ==========================================
-# --- PANEL KONTROL (TAMBAHAN HARGA MANUAL) ---
+# --- PANEL KONTROL ---
 # ==========================================
 st.markdown("### ⚙️ PANEL KONTROL (ULTIMATE QUANT SNIPER)")
 
@@ -32,7 +32,7 @@ col_in1, col_in2, col_in3, col_in4 = st.columns(4)
 with col_in1:
     ticker_input = st.text_input("🔍 1. Kode Saham:", "BBCA").upper().strip()
 with col_in2:
-    manual_price_input = st.number_input("🎯 2. Harga Real-Time (Opsional):", min_value=0, value=0, step=1, help="Isi dengan harga Stockbit jika Yahoo Finance error/telat.")
+    manual_price_input = st.number_input("🎯 2. Harga Manual (Darurat):", min_value=0, value=0, step=1, help="Isi hanya jika YF web juga ngawur.")
 with col_in3:
     status_bandar = st.selectbox("🕵️‍♂️ 3. Bandar:", ["Akumulasi (Net Buy)", "Netral / Sepi", "Distribusi (Net Sell)"])
 with col_in4:
@@ -51,30 +51,45 @@ ticker_tv = f"IDX:{ticker_input}"
 st.markdown("---")
 
 # ==========================================
-# --- MESIN KALKULASI DEWA ---
+# --- MESIN KALKULASI DEWA V11 ---
 # ==========================================
 @st.cache_data(ttl=60)
 def get_stock_data(ticker_symbol, manual_price=0):
     try:
         stock = yf.Ticker(ticker_symbol)
+        info = stock.info
         hist = stock.history(period="6mo")
         hist = hist.dropna(subset=['Close', 'High', 'Low', 'Volume'])
         
         if hist.empty or len(hist) < 60: return None
         
-        # LOGIKA HARGA MANUAL (OVERRIDE YF DELAY)
+        # LOGIKA V11: TARIK HARGA WEB FRONTEND DULU!
+        api_live_price = info.get('currentPrice', info.get('regularMarketPrice', 0))
+        api_prev_close = info.get('previousClose', 0)
+        
+        hist_latest_price = hist['Close'].iloc[-1]
+        
         if manual_price > 0:
             latest_price = float(manual_price)
-            prev_price = hist['Close'].iloc[-1]
-            if prev_price == latest_price and len(hist) > 1:
-                prev_price = hist['Close'].iloc[-2]
+            prev_price = hist['Close'].iloc[-1] if hist['Close'].iloc[-1] != latest_price else hist['Close'].iloc[-2]
             change_pct = ((latest_price - prev_price) / prev_price) * 100
+            hist.loc[hist.index[-1], 'Close'] = latest_price
+            
+        # V11 AUTO-SYNC: Kalau harga web beda sama history (history lemot)
+        elif api_live_price > 0 and api_live_price != hist_latest_price:
+            latest_price = float(api_live_price)
+            prev_price = float(api_prev_close) if api_prev_close > 0 else hist_latest_price
+            change_pct = ((latest_price - prev_price) / prev_price) * 100
+            
+            # Paksa update lilin (candle) terakhir di kalkulator AI
+            hist.loc[hist.index[-1], 'Close'] = latest_price
+            if latest_price > hist['High'].iloc[-1]: hist.loc[hist.index[-1], 'High'] = latest_price
+            if latest_price < hist['Low'].iloc[-1]: hist.loc[hist.index[-1], 'Low'] = latest_price
         else:
-            latest_price = hist['Close'].iloc[-1]
+            latest_price = hist_latest_price
             prev_price = hist['Close'].iloc[-2]
             change_pct = ((latest_price - prev_price) / prev_price) * 100
             
-        info = stock.info
         company_name = info.get('longName', f"PT {ticker_symbol.replace('.JK', '')} Tbk")
         
         def safe_pct(val): return val if val is not None else 0
@@ -211,7 +226,6 @@ def get_stock_data(ticker_symbol, manual_price=0):
     except:
         return None
 
-# KUNCI UTAMA: MEMASUKKAN HARGA MANUAL KE DALAM MESIN DATA
 data = get_stock_data(ticker_yf, manual_price_input)
 if data is None:
     st.error(f"❌ Saham **{ticker_input}** tidak valid atau data kurang.")

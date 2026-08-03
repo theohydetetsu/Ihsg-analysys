@@ -2,6 +2,7 @@ import streamlit as st
 import yfinance as yf
 import datetime
 import pandas as pd
+import math
 import streamlit.components.v1 as components
 
 # ==========================================
@@ -9,7 +10,6 @@ import streamlit.components.v1 as components
 # ==========================================
 st.set_page_config(page_title="HOLY GRAIL ULTIMATE - Quant Sniper", layout="wide")
 
-# CSS PREMIUM (COMPACT 180px & RESPONSIVE)
 st.markdown("""<style>
 .stApp, [data-testid="stAppViewContainer"] {background-color: #020617 !important;}
 [data-testid="stHeader"] {background-color: rgba(0,0,0,0) !important;}
@@ -22,7 +22,6 @@ p, span, li, div.stMarkdown, .stText {font-size: 0.8rem !important; line-height:
 hr {margin-top: 0.4rem; margin-bottom: 0.4rem; border-color: #374151;}
 </style>""", unsafe_allow_html=True)
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', unsafe_allow_html=True)
-
 
 # ==========================================
 # --- PANEL KONTROL ---
@@ -49,7 +48,6 @@ ticker_yf = f"{ticker_input}.JK"
 ticker_tv = f"IDX:{ticker_input}"
 st.markdown("---")
 
-
 # ==========================================
 # --- MESIN KALKULASI DEWA ---
 # ==========================================
@@ -58,6 +56,10 @@ def get_stock_data(ticker_symbol):
     try:
         stock = yf.Ticker(ticker_symbol)
         hist = stock.history(period="6mo")
+        
+        # VAKSIN 1: HAPUS SEMUA DATA KOSONG DARI YAHOO FINANCE
+        hist = hist.dropna(subset=['Close', 'High', 'Low', 'Volume'])
+        
         if hist.empty or len(hist) < 60: return None
             
         latest_price = hist['Close'].iloc[-1]
@@ -67,7 +69,6 @@ def get_stock_data(ticker_symbol):
         
         company_name = info.get('longName', f"PT {ticker_symbol.replace('.JK', '')} Tbk")
         
-        # --- EKSTRAKSI DATA FUNDAMENTAL ---
         def safe_pct(val): return val if val is not None else 0
         def safe_num(val): return val if val is not None else 0
         
@@ -84,7 +85,7 @@ def get_stock_data(ticker_symbol):
         eps_g_str = f"{eps_g_raw * 100:.1f}%" if eps_g_raw != 0 else "N/A"
         
         def get_color(val, threshold, mode="high_good"):
-            if val == 0 or val == "N/A": return "#9ca3af" # Gray
+            if val == 0 or val == "N/A": return "#9ca3af"
             if mode == "high_good": return "#4ade80" if val > threshold else "#f87171"
             else: return "#4ade80" if val < threshold else "#f87171"
 
@@ -94,13 +95,11 @@ def get_stock_data(ticker_symbol):
         npm_col = get_color(npm_raw, 0.05, "high_good")
         eps_g_col = get_color(eps_g_raw, 0, "high_good")
 
-        # Status Fundamental (Kotak 1)
         f_score = sum([pe_raw>0 and pe_raw<20, pbv_raw>0 and pbv_raw<2, roe_raw>0.1, npm_raw>0.05, eps_g_raw>0])
         if f_score >= 3: stat_funda = "<span style='color:#4ade80;'>BAGUS</span>"
         elif f_score >= 1: stat_funda = "<span style='color:#fbbf24;'>STABIL</span>"
         else: stat_funda = "<span style='color:#f87171;'>JELEK</span>"
 
-        # --- EKSTRAKSI STATISTIK SAAT INI (KOTAK 3) ---
         mc_raw = info.get('marketCap', 0)
         mc_str = f"{mc_raw / 1e12:.2f} T" if mc_raw > 0 else "N/A"
         eps_ttm = safe_num(info.get('trailingEps'))
@@ -114,12 +113,10 @@ def get_stock_data(ticker_symbol):
                 break
         if ceo_name == "N/A" and officers: ceo_name = officers[0].get('name', 'N/A')
         
-        # Status Statistik (Kotak 3)
         if mc_raw >= 10e12: stat_stat = "<span style='color:#4ade80;'>BAGUS (Bluechip)</span>"
         elif mc_raw >= 1e12: stat_stat = "<span style='color:#fbbf24;'>STABIL (Midcap)</span>"
         else: stat_stat = "<span style='color:#f87171;'>JELEK (Smallcap)</span>"
 
-        # --- TEKNIKAL & QUANT ---
         close_prices = hist['Close']
         ema9 = close_prices.ewm(span=9, adjust=False).mean().iloc[-1]
         ema21 = close_prices.ewm(span=21, adjust=False).mean().iloc[-1]
@@ -139,6 +136,8 @@ def get_stock_data(ticker_symbol):
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
         rs = gain / loss
         rsi_val = (100 - (100 / (1 + rs))).iloc[-1]
+        if pd.isna(rsi_val): rsi_val = 50
+        
         if rsi_val >= 70: rsi_status = "Overbought"
         elif rsi_val <= 30: rsi_status = "Oversold"
         else: rsi_status = "Netral"
@@ -158,11 +157,12 @@ def get_stock_data(ticker_symbol):
         vol_latest = hist['Volume'].iloc[-1]
         vol_ma20 = hist['Volume'].rolling(20).mean().iloc[-1]
         vol_ratio = (vol_latest / vol_ma20) * 100 if vol_ma20 > 0 else 0
+        if pd.isna(vol_ratio): vol_ratio = 0
+        
         if vol_ratio > 150: vpa_stat, vpa_score = f"Ledakan Vol ({int(vol_ratio)}%)", 1
         elif vol_ratio < 80: vpa_stat, vpa_score = f"Volume Kering ({int(vol_ratio)}%)", 0
         else: vpa_stat, vpa_score = f"Volume Normal ({int(vol_ratio)}%)", 0
 
-        # VCP
         daily_range = hist['High'] - hist['Low']
         atr_20 = daily_range.rolling(20).mean().iloc[-1]
         atr_5 = daily_range.rolling(5).mean().iloc[-1]
@@ -171,13 +171,14 @@ def get_stock_data(ticker_symbol):
         elif atr_5 < atr_20: vcp_stat, vcp_score = "Menyempit (Formasi)", 0
         else: vcp_stat, vcp_score = "Melebar (Bukan VCP)", 0
 
-        # Auto VWAP
         try:
-            intraday = stock.history(period="1d", interval="5m")
+            intraday = stock.history(period="1d", interval="5m").dropna(subset=['Close', 'Volume'])
             if not intraday.empty and intraday['Volume'].sum() > 0:
                 typical_price = (intraday['High'] + intraday['Low'] + intraday['Close']) / 3
                 vwap_kalkulasi = (typical_price * intraday['Volume']).cumsum() / intraday['Volume'].cumsum()
                 vwap_val = vwap_kalkulasi.iloc[-1]
+                if pd.isna(vwap_val): vwap_val = 0
+                
                 if latest_price > (vwap_val * 1.005): vwap_stat, vwap_score = "Atas VWAP (Bullish)", 1
                 elif latest_price < (vwap_val * 0.995): vwap_stat, vwap_score = "Bawah VWAP (Lemah)", 0
                 else: vwap_stat, vwap_score = "Area VWAP", 1
@@ -205,6 +206,19 @@ if data is None:
     st.stop()
 
 
+# --- VAKSIN 2: PENGAMAN ANGKA HARGA (SAFE_INT) ---
+def s_int(val):
+    try: return int(val) if pd.notna(val) else 0
+    except: return 0
+
+p_val = s_int(data['price'])
+r_val = s_int(data['res'])
+s_val = s_int(data['sup'])
+sh_val = s_int(data['swing_high'])
+f_val = s_int(data['fibo_618'])
+vw_val = s_int(data['vwap_val'])
+
+
 # ==========================================
 # --- PENILAIAN SKOR & PROBABILITAS ---
 # ==========================================
@@ -228,27 +242,20 @@ elif score >= 11: win_rate, wr_color = "75% (Tinggi)", "#4ade80"
 elif score >= 7: win_rate, wr_color = "50% (Spekulatif)", "#fbbf24"
 else: win_rate, wr_color = "< 30% (Risiko Bahaya)", "#f87171"
 
-# --- VAKSIN ANTI-ERROR (SAFETY NET) ---
 risk_pct = float(risiko_input.split('%')[0]) / 100
 max_loss_rp = modal_input * risk_pct
-risk_per_share = data['price'] - data['sup']
-if pd.isna(risk_per_share) or risk_per_share <= 0: 
-    risk_per_share = data['price'] * 0.02 
-max_shares = max_loss_rp / risk_per_share
+risk_per_share = p_val - s_val
+if risk_per_share <= 0: risk_per_share = p_val * 0.02 
 
 try:
-    if pd.isna(max_shares):
-        max_lot = 0
-    else:
-        max_lot = int(max_shares / 100)
-except (ValueError, OverflowError):
+    max_shares = max_loss_rp / risk_per_share
+    max_lot = int(max_shares / 100) if pd.notna(max_shares) else 0
+except:
     max_lot = 0
-
 if max_lot < 1: max_lot = 0
-# --------------------------------------
 
-if score >= 9: entry_val = f"<span style='color:#4ade80; font-weight:bold;'>Rp{int(data['price'])} (HK)</span>"
-elif score >= 5: entry_val = f"<span style='color:#fbbf24; font-weight:bold;'>Rp{int(data['sup'])} (Antre)</span>"
+if score >= 9: entry_val = f"<span style='color:#4ade80; font-weight:bold;'>Rp{p_val} (HK)</span>"
+elif score >= 5: entry_val = f"<span style='color:#fbbf24; font-weight:bold;'>Rp{s_val} (Antre)</span>"
 else: entry_val = "<span style='color:#f87171; font-weight:bold;'>Wait & See</span>"
 
 
@@ -262,7 +269,6 @@ now_wib = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=7)))
 today_time_str = now_wib.strftime("%d %B %Y, %H:%M WIB") 
 logo_url = f"https://assets.parqet.com/logos/symbol/{ticker_input}.JK?format=png"
 
-# Kolom Header yang disesuaikan untuk Trade Plan lebih sempit (1.0)
 col_h1, col_h2, col_h3, col_h4 = st.columns([1.5, 1.6, 1.1, 1.0])
 
 with col_h1:
@@ -288,12 +294,12 @@ with col_h2:
 with col_h3:
     st.markdown("<div style='text-align: right; margin-top: 15px;'>", unsafe_allow_html=True)
     st.markdown("<div style='color:#9ca3af; font-size:0.95rem; font-weight:bold; white-space: nowrap;'>HARGA PENUTUPAN</div>", unsafe_allow_html=True)
-    st.markdown(f"<div style='color:#f3f4f6; font-size: clamp(2.2rem, 4.5vw, 3.5rem); font-weight: 900; line-height: 1.1; white-space: nowrap;'>Rp{int(data['price'])}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='color:#f3f4f6; font-size: clamp(2.2rem, 4.5vw, 3.5rem); font-weight: 900; line-height: 1.1; white-space: nowrap;'>Rp{p_val}</div>", unsafe_allow_html=True)
     st.markdown(f"<div style='color: {color}; font-size: 1.2rem; font-weight: bold; white-space: nowrap;'>{arrow} {data['change']:.2f}%</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 with col_h4:
-    reward = int(data['res']) - int(data['price'])
+    reward = r_val - p_val
     rr_html = f"<div style='background:#1e3a8a; color:white; padding:4px; border-radius:4px; text-align:center; font-weight:bold; font-size:0.75rem; margin-top: 6px;'>⚖️ R:R = 1 : {round(reward / risk_per_share, 1) if risk_per_share > 0 else 0}</div>"
     
     st.markdown(f"""
@@ -303,17 +309,16 @@ with col_h4:
             <span style='color:#d1d5db;'>Entry:</span> <span>{entry_val}</span>
         </div>
         <div style='display:flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 2px;'>
-            <span style='color:#d1d5db;'>Target:</span> <span style='color:#4ade80; font-weight:bold;'>Rp{int(data['res'])}</span>
+            <span style='color:#d1d5db;'>Target:</span> <span style='color:#4ade80; font-weight:bold;'>Rp{r_val}</span>
         </div>
         <div style='display:flex; justify-content: space-between; font-size: 0.85rem;'>
-            <span style='color:#d1d5db;'>Stop Loss:</span> <span style='color:#f87171; font-weight:bold;'>Rp{int(data['sup'])}</span>
+            <span style='color:#d1d5db;'>Stop Loss:</span> <span style='color:#f87171; font-weight:bold;'>Rp{s_val}</span>
         </div>
         {rr_html}
     </div>
     """, unsafe_allow_html=True)
 
 st.divider()
-
 
 # ==========================================
 # --- 2. CHART (FULL WIDTH) ---
@@ -345,12 +350,9 @@ tradingview_html = f"""
 """
 components.html(tradingview_html, height=430)
 
-
 # ==========================================
 # --- 3. KOTAK ANALISA (COMPACT 180px) ---
 # ==========================================
-
-# Penentuan Status Kotak Lainnya
 if max_lot > 0: stat_mm = "<span style='color:#4ade80;'>BAGUS</span>"
 else: stat_mm = "<span style='color:#f87171;'>JELEK</span>"
 
@@ -373,7 +375,6 @@ vpa_color = "#4ade80" if data['vpa_score'] == 1 else "#fbbf24"
 asing_html = f"<span style='color:#4ade80;'>NET BUY</span>" if "NET BUY" in status_asing else (f"<span style='color:#f87171;'>NET SELL</span>" if "NET SELL" in status_asing else f"<span style='color:#fbbf24;'>Netral</span>")
 bandar_html = f"<span style='color:#4ade80;'>Akumulasi</span>" if "Akumulasi" in status_bandar else (f"<span style='color:#f87171;'>Distribusi</span>" if "Distribusi" in status_bandar else f"<span style='color:#fbbf24;'>Netral</span>")
 
-# Merakit Kotak Ultra-Kompak (Tinggi Tetap 180px)
 box1 = f"""<div style='height: 180px; display: flex; flex-direction: column;'>
 <div><span style='font-size: 0.95rem; font-weight: bold;'>💼 FUNDAMENTAL & GROWTH</span><br><hr style='margin: 4px 0; border-color:#374151;'>
 <div style='display:flex; justify-content: space-between;'><span>PER:</span> <strong style='color:{data['pe_col']};'>{data['pe_str']}</strong></div>
@@ -448,7 +449,6 @@ with col_b5:
     with st.container(border=True): st.markdown(box5, unsafe_allow_html=True)
 with col_b6:
     with st.container(border=True): st.markdown(box6, unsafe_allow_html=True)
-
 
 # ==========================================
 # --- 4. PUSAT DATA PASAR ---

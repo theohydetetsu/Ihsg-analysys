@@ -3,6 +3,7 @@ import yfinance as yf
 import datetime
 import pandas as pd
 import math
+import io
 import streamlit.components.v1 as components
 
 # ==========================================
@@ -24,9 +25,9 @@ hr {margin-top: 0.4rem; margin-bottom: 0.4rem; border-color: #374151;}
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', unsafe_allow_html=True)
 
 # ==========================================
-# --- PANEL KONTROL (CLEAN 3 KOLOM) ---
+# --- PANEL KONTROL ---
 # ==========================================
-st.markdown("### ⚙️ PANEL KONTROL (ULTIMATE QUANT SNIPER)")
+st.markdown("### ⚙️ PANEL KONTROL (ULTIMATE QUANT SNIPER V14)")
 
 col_in1, col_in2, col_in3 = st.columns(3)
 with col_in1:
@@ -49,7 +50,7 @@ ticker_tv = f"IDX:{ticker_input}"
 st.markdown("---")
 
 # ==========================================
-# --- MESIN KALKULASI DEWA V12 (AUTO-SYNC) ---
+# --- MESIN KALKULASI DEWA V14 ---
 # ==========================================
 @st.cache_data(ttl=60)
 def get_stock_data(ticker_symbol):
@@ -65,22 +66,33 @@ def get_stock_data(ticker_symbol):
         api_prev_close = info.get('previousClose', 0)
         hist_latest_price = hist['Close'].iloc[-1]
             
-        # AUTO-SYNC OTOMATIS DENGAN WEB FRONTEND
+        # AUTO-SYNC
         if api_live_price > 0 and api_live_price != hist_latest_price:
             latest_price = float(api_live_price)
             prev_price = float(api_prev_close) if api_prev_close > 0 else hist_latest_price
-            change_pct = ((latest_price - prev_price) / prev_price) * 100
-            
             hist.loc[hist.index[-1], 'Close'] = latest_price
             if latest_price > hist['High'].iloc[-1]: hist.loc[hist.index[-1], 'High'] = latest_price
             if latest_price < hist['Low'].iloc[-1]: hist.loc[hist.index[-1], 'Low'] = latest_price
         else:
             latest_price = hist_latest_price
             prev_price = hist['Close'].iloc[-2]
-            change_pct = ((latest_price - prev_price) / prev_price) * 100
+            if api_prev_close == 0: api_prev_close = prev_price
             
+        change_pct = ((latest_price - prev_price) / prev_price) * 100
         company_name = info.get('longName', f"PT {ticker_symbol.replace('.JK', '')} Tbk")
         
+        # --- ENGINE 1: KALKULASI ARA & ARB IHSG ---
+        if api_prev_close < 200: limit_pct = 0.35
+        elif 200 <= api_prev_close <= 5000: limit_pct = 0.25
+        else: limit_pct = 0.20
+        
+        ara_price = int(api_prev_close * (1 + limit_pct))
+        arb_price = int(api_prev_close * (1 - limit_pct))
+        
+        jarak_ara = ((ara_price - latest_price) / latest_price) * 100
+        jarak_arb = ((latest_price - arb_price) / latest_price) * 100
+
+        # Fundamental
         def safe_pct(val): return val if val is not None else 0
         def safe_num(val): return val if val is not None else 0
         
@@ -108,9 +120,7 @@ def get_stock_data(ticker_symbol):
         eps_g_col = get_color(eps_g_raw, 0, "high_good")
 
         f_score = sum([pe_raw>0 and pe_raw<20, pbv_raw>0 and pbv_raw<2, roe_raw>0.1, npm_raw>0.05, eps_g_raw>0])
-        if f_score >= 3: stat_funda = "<span style='color:#4ade80;'>BAGUS</span>"
-        elif f_score >= 1: stat_funda = "<span style='color:#fbbf24;'>STABIL</span>"
-        else: stat_funda = "<span style='color:#f87171;'>JELEK</span>"
+        stat_funda = "<span style='color:#4ade80;'>BAGUS</span>" if f_score >= 3 else ("<span style='color:#fbbf24;'>STABIL</span>" if f_score >= 1 else "<span style='color:#f87171;'>JELEK</span>")
 
         mc_raw = info.get('marketCap', 0)
         mc_str = f"{mc_raw / 1e12:.2f} T" if mc_raw > 0 else "N/A"
@@ -120,15 +130,11 @@ def get_stock_data(ticker_symbol):
         officers = info.get('companyOfficers', [])
         ceo_name = "N/A"
         for officer in officers:
-            if 'CEO' in officer.get('title', '').upper():
-                ceo_name = officer.get('name', 'N/A')
-                break
+            if 'CEO' in officer.get('title', '').upper(): ceo_name = officer.get('name', 'N/A'); break
         if ceo_name == "N/A" and officers: ceo_name = officers[0].get('name', 'N/A')
-        
-        if mc_raw >= 10e12: stat_stat = "<span style='color:#4ade80;'>BAGUS (Bluechip)</span>"
-        elif mc_raw >= 1e12: stat_stat = "<span style='color:#fbbf24;'>STABIL (Midcap)</span>"
-        else: stat_stat = "<span style='color:#f87171;'>JELEK (Smallcap)</span>"
+        stat_stat = "<span style='color:#4ade80;'>BAGUS (Bluechip)</span>" if mc_raw >= 10e12 else ("<span style='color:#fbbf24;'>STABIL (Midcap)</span>" if mc_raw >= 1e12 else "<span style='color:#f87171;'>JELEK (Smallcap)</span>")
 
+        # Teknikal
         close_prices = hist['Close']
         ema9 = close_prices.ewm(span=9, adjust=False).mean().iloc[-1]
         ema21 = close_prices.ewm(span=21, adjust=False).mean().iloc[-1]
@@ -142,6 +148,14 @@ def get_stock_data(ticker_symbol):
         if latest_price > sma5 and latest_price > sma20 and latest_price > sma60: mtf_status, mtf_score = "ALIGNMENT BULLISH", 2
         elif latest_price > sma20: mtf_status, mtf_score = "MODERATE (Campur)", 1
         else: mtf_status, mtf_score = "DEAD CROSS (Bearish)", 0
+
+        # --- ENGINE 2: BOLLINGER BANDS VOLATILITAS ---
+        std20 = close_prices.rolling(20).std().iloc[-1]
+        upper_bb = sma20 + (2 * std20)
+        lower_bb = sma20 - (2 * std20)
+        if latest_price > upper_bb: bb_stat = "Breakout Atas (Kuat)"
+        elif latest_price < lower_bb: bb_stat = "Breakout Bawah (Lemah)"
+        else: bb_stat = "Di Dalam Bands (Normal)"
 
         delta = close_prices.diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
@@ -204,13 +218,14 @@ def get_stock_data(ticker_symbol):
             'res': res_terdekat, 'sup': sup_terdekat, 'swing_high': swing_high,
             'fibo_618': fibo_618, 'fibo_stat': fibo_stat, 'fibo_score': fibo_score, 
             'ema_cross': ema_cross, 'trend': trend_status, 'rsi_val': rsi_val, 'rsi_status': rsi_status,
-            'vpa_stat': vpa_stat, 'vpa_score': vpa_score,
+            'vpa_stat': vpa_stat, 'vpa_score': vpa_score, 'bb_stat': bb_stat,
             'mtf_status': mtf_status, 'mtf_score': mtf_score, 'vwap_val': vwap_val, 'vwap_stat': vwap_stat, 'vwap_score': vwap_score,
             'vcp_stat': vcp_stat, 'vcp_score': vcp_score,
             'pe_str': pe_str, 'pbv_str': pbv_str, 'roe_str': roe_str, 'npm_str': npm_str, 'eps_g_str': eps_g_str,
             'pe_col': pe_col, 'pbv_col': pbv_col, 'roe_col': roe_col, 'npm_col': npm_col, 'eps_g_col': eps_g_col,
             'stat_funda': stat_funda, 'mc_str': mc_str, 'eps_ttm': f"{eps_ttm:.2f}", 'ps_ratio': f"{ps_ratio:.2f}x", 
-            'ceo': ceo_name, 'stat_stat': stat_stat
+            'ceo': ceo_name, 'stat_stat': stat_stat,
+            'ara_price': ara_price, 'arb_price': arb_price, 'jarak_ara': jarak_ara, 'jarak_arb': jarak_arb, 'vol_ratio': vol_ratio
         }
     except:
         return None
@@ -227,9 +242,9 @@ def s_int(val):
 p_val = s_int(data['price'])
 r_val = s_int(data['res'])
 s_val = s_int(data['sup'])
-sh_val = s_int(data['swing_high'])
-f_val = s_int(data['fibo_618'])
 vw_val = s_int(data['vwap_val'])
+ara_val = s_int(data['ara_price'])
+arb_val = s_int(data['arb_price'])
 
 # ==========================================
 # --- PENILAIAN SKOR & PROBABILITAS ---
@@ -259,11 +274,8 @@ max_loss_rp = modal_input * risk_pct
 risk_per_share = p_val - s_val
 if risk_per_share <= 0: risk_per_share = p_val * 0.02 
 
-try:
-    max_shares = max_loss_rp / risk_per_share
-    max_lot = int(max_shares / 100) if pd.notna(max_shares) else 0
-except:
-    max_lot = 0
+try: max_lot = int((max_loss_rp / risk_per_share) / 100) if pd.notna(max_loss_rp / risk_per_share) else 0
+except: max_lot = 0
 if max_lot < 1: max_lot = 0
 
 if score >= 9: entry_val = f"<span style='color:#4ade80; font-weight:bold;'>Rp{p_val} (HK)</span>"
@@ -297,14 +309,13 @@ with col_h2:
     elif score >= 9: st.markdown("<div style='color:#4ade80; font-size: 1.3rem; font-weight:900;'>STRONG BUY &nbsp;<span style='font-size: 1rem;'>⭐⭐⭐⭐</span></div>", unsafe_allow_html=True)
     elif score >= 5: st.markdown("<div style='color:#fbbf24; font-size: 1.3rem; font-weight:900;'>HOLD / WAIT &nbsp;<span style='font-size: 1rem;'>⭐⭐⭐</span></div>", unsafe_allow_html=True)
     else: st.markdown("<div style='color:#f87171; font-size: 1.3rem; font-weight:900;'>SELL / AVOID &nbsp;<span style='font-size: 1rem;'>⭐</span></div>", unsafe_allow_html=True)
-    
     st.markdown(f"<div style='color:#fbbf24; font-size: 2.5rem; font-weight: 900; line-height:1.2;'>🌟 {score}.0<span style='font-size:1.2rem; color:#9ca3af;'>/16</span></div>", unsafe_allow_html=True)
     st.markdown(f"<div style='font-size: 0.95rem; color:#9ca3af;'>Win: <strong style='color:{wr_color};'>{win_rate}</strong></div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 with col_h3:
     st.markdown("<div style='text-align: right; margin-top: 15px;'>", unsafe_allow_html=True)
-    st.markdown("<div style='color:#9ca3af; font-size:0.95rem; font-weight:bold; white-space: nowrap;'>HARGA PENUTUPAN</div>", unsafe_allow_html=True)
+    st.markdown("<div style='color:#9ca3af; font-size:0.95rem; font-weight:bold; white-space: nowrap;'>HARGA SAAT INI</div>", unsafe_allow_html=True)
     st.markdown(f"<div style='color:#f3f4f6; font-size: clamp(2.2rem, 4.5vw, 3.5rem); font-weight: 900; line-height: 1.1; white-space: nowrap;'>Rp{p_val}</div>", unsafe_allow_html=True)
     st.markdown(f"<div style='color: {color}; font-size: 1.2rem; font-weight: bold; white-space: nowrap;'>{arrow} {data['change']:.2f}%</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
@@ -312,19 +323,12 @@ with col_h3:
 with col_h4:
     reward = r_val - p_val
     rr_html = f"<div style='background:#1e3a8a; color:white; padding:4px; border-radius:4px; text-align:center; font-weight:bold; font-size:0.75rem; margin-top: 6px;'>⚖️ R:R = 1 : {round(reward / risk_per_share, 1) if risk_per_share > 0 else 0}</div>"
-    
     st.markdown(f"""
     <div style='background: linear-gradient(145deg, #1f2937, #111827); border: 1px solid #374151; padding: 10px; border-radius: 10px; margin-top: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);'>
         <div style='color:#9ca3af; font-size:0.75rem; font-weight:bold; letter-spacing:1px; margin-bottom: 6px; white-space: nowrap;'>🎯 TRADE PLAN & SNIPER</div>
-        <div style='display:flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 2px;'>
-            <span style='color:#d1d5db;'>Entry:</span> <span>{entry_val}</span>
-        </div>
-        <div style='display:flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 2px;'>
-            <span style='color:#d1d5db;'>Target:</span> <span style='color:#4ade80; font-weight:bold;'>Rp{r_val}</span>
-        </div>
-        <div style='display:flex; justify-content: space-between; font-size: 0.85rem;'>
-            <span style='color:#d1d5db;'>Stop Loss:</span> <span style='color:#f87171; font-weight:bold;'>Rp{s_val}</span>
-        </div>
+        <div style='display:flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 2px;'><span style='color:#d1d5db;'>Entry:</span> <span>{entry_val}</span></div>
+        <div style='display:flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 2px;'><span style='color:#d1d5db;'>Target:</span> <span style='color:#4ade80; font-weight:bold;'>Rp{r_val}</span></div>
+        <div style='display:flex; justify-content: space-between; font-size: 0.85rem;'><span style='color:#d1d5db;'>Stop Loss:</span> <span style='color:#f87171; font-weight:bold;'>Rp{s_val}</span></div>
         {rr_html}
     </div>
     """, unsafe_allow_html=True)
@@ -362,22 +366,23 @@ tradingview_html = f"""
 components.html(tradingview_html, height=430)
 
 # ==========================================
-# --- 3. KOTAK ANALISA (COMPACT 180px) ---
+# --- 3. KOTAK ANALISA ---
 # ==========================================
+# TAMPILAN ARA / ARB BARU (ENGINE 1)
+st.markdown(f"""
+<div style='display:flex; justify-content:space-around; background:#111827; border: 1px solid #374151; padding:10px; border-radius:10px; margin-bottom: 15px;'>
+    <div style='text-align:center;'>🚀 <span style='color:#9ca3af; font-size:0.9rem;'>Batas ARA:</span> <strong style='color:#4ade80; font-size:1.1rem;'>Rp{ara_val}</strong> <span style='color:#4ade80; font-size:0.8rem;'>(+{data['jarak_ara']:.1f}%)</span></div>
+    <div style='text-align:center;'>🩸 <span style='color:#9ca3af; font-size:0.9rem;'>Batas ARB:</span> <strong style='color:#f87171; font-size:1.1rem;'>Rp{arb_val}</strong> <span style='color:#f87171; font-size:0.8rem;'>(-{data['jarak_arb']:.1f}%)</span></div>
+</div>
+""", unsafe_allow_html=True)
+
 if max_lot > 0: stat_mm = "<span style='color:#4ade80;'>BAGUS</span>"
 else: stat_mm = "<span style='color:#f87171;'>JELEK</span>"
-
 if score >= 11: stat_flow = "<span style='color:#4ade80;'>BAGUS (Akumulasi Kuat)</span>"
 elif score >= 6: stat_flow = "<span style='color:#fbbf24;'>STABIL (Netral)</span>"
 else: stat_flow = "<span style='color:#f87171;'>JELEK (Distribusi)</span>"
-
-if "ALIGNMENT BULLISH" in data['mtf_status'] and data['vpa_score'] == 1: stat_mtf = "<span style='color:#4ade80;'>BAGUS</span>"
-elif "BEARISH" in data['mtf_status']: stat_mtf = "<span style='color:#f87171;'>JELEK</span>"
-else: stat_mtf = "<span style='color:#fbbf24;'>STABIL</span>"
-
-if "Bullish" in data['ema_cross'] and data['vcp_score'] == 1: stat_tech = "<span style='color:#4ade80;'>BAGUS (Breakout)</span>"
-elif "Bearish" in data['ema_cross']: stat_tech = "<span style='color:#f87171;'>JELEK (Downtrend)</span>"
-else: stat_tech = "<span style='color:#fbbf24;'>STABIL (Konsolidasi)</span>"
+stat_mtf = "<span style='color:#4ade80;'>BAGUS</span>" if "ALIGNMENT BULLISH" in data['mtf_status'] and data['vpa_score'] == 1 else ("<span style='color:#f87171;'>JELEK</span>" if "BEARISH" in data['mtf_status'] else "<span style='color:#fbbf24;'>STABIL</span>")
+stat_tech = "<span style='color:#4ade80;'>BAGUS (Breakout)</span>" if "Bullish" in data['ema_cross'] and data['vcp_score'] == 1 else ("<span style='color:#f87171;'>JELEK (Downtrend)</span>" if "Bearish" in data['ema_cross'] else "<span style='color:#fbbf24;'>STABIL (Konsolidasi)</span>")
 
 vcp_color = "#4ade80" if data['vcp_score'] == 1 else ("#fbbf24" if "Menyempit" in data['vcp_stat'] else "#9ca3af")
 vwap_color = "#4ade80" if data['vwap_score'] == 1 else "#f87171"
@@ -386,62 +391,12 @@ vpa_color = "#4ade80" if data['vpa_score'] == 1 else "#fbbf24"
 asing_html = f"<span style='color:#4ade80;'>NET BUY</span>" if "NET BUY" in status_asing else (f"<span style='color:#f87171;'>NET SELL</span>" if "NET SELL" in status_asing else f"<span style='color:#fbbf24;'>Netral</span>")
 bandar_html = f"<span style='color:#4ade80;'>Akumulasi</span>" if "Akumulasi" in status_bandar else (f"<span style='color:#f87171;'>Distribusi</span>" if "Distribusi" in status_bandar else f"<span style='color:#fbbf24;'>Netral</span>")
 
-box1 = f"""<div style='height: 180px; display: flex; flex-direction: column;'>
-<div><span style='font-size: 0.95rem; font-weight: bold;'>💼 FUNDAMENTAL & GROWTH</span><br><hr style='margin: 4px 0; border-color:#374151;'>
-<div style='display:flex; justify-content: space-between;'><span>PER:</span> <strong style='color:{data['pe_col']};'>{data['pe_str']}</strong></div>
-<div style='display:flex; justify-content: space-between;'><span>PBV:</span> <strong style='color:{data['pbv_col']};'>{data['pbv_str']}</strong></div>
-<div style='display:flex; justify-content: space-between;'><span>ROE:</span> <strong style='color:{data['roe_col']};'>{data['roe_str']}</strong></div>
-<div style='display:flex; justify-content: space-between;'><span>NPM:</span> <strong style='color:{data['npm_col']};'>{data['npm_str']}</strong></div>
-<div style='display:flex; justify-content: space-between;'><span>EPS (QoQ):</span> <strong style='color:{data['eps_g_col']};'>{data['eps_g_str']}</strong></div>
-</div>
-<div style='margin-top: auto;'><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{data['stat_funda']}</strong></div>
-</div>"""
-
-box2 = f"""<div style='height: 180px; display: flex; flex-direction: column;'>
-<div><span style='font-size: 0.95rem; font-weight: bold;'>🛡️ MONEY MANAGEMENT</span><br><hr style='margin: 4px 0; border-color:#374151;'>
-<span style='color:#9ca3af;'>Modal:</span> <strong>Rp{modal_input:,.0f}</strong><br>
-<span style='color:#9ca3af;'>Risiko ({risk_pct*100}%):</span> <span style='color:#f87171;'>-Rp{max_loss_rp:,.0f}</span><br>
-<br>✔️ Maksimal Beli: <strong style='color:#4ade80;'>{max_lot} LOT</strong>
-</div>
-<div style='margin-top: auto;'><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{stat_mm}</strong></div>
-</div>"""
-
-box3 = f"""<div style='height: 180px; display: flex; flex-direction: column;'>
-<div><span style='font-size: 0.95rem; font-weight: bold;'>📊 STATISTIC SAAT INI</span><br><hr style='margin: 4px 0; border-color:#374151;'>
-<div style='display:flex; justify-content: space-between;'><span>Market Cap:</span> <strong style='color:#f3f4f6;'>{data['mc_str']}</strong></div>
-<div style='display:flex; justify-content: space-between;'><span>Ratio Harga:</span> <strong style='color:#f3f4f6;'>{data['ps_ratio']}</strong></div>
-<div style='display:flex; justify-content: space-between;'><span>EPS Dasar(TTM):</span> <strong style='color:#f3f4f6;'>{data['eps_ttm']}</strong></div>
-<div style='display:flex; justify-content: space-between;'><span>CEO:</span> <strong style='color:#f3f4f6;'>{data['ceo'][:15]}</strong></div>
-</div>
-<div style='margin-top: auto;'><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{data['stat_stat']}</strong></div>
-</div>"""
-
-box4 = f"""<div style='height: 180px; display: flex; flex-direction: column;'>
-<div><span style='font-size: 0.95rem; font-weight: bold;'>🦅 INSTITUTIONAL FLOW</span><br><hr style='margin: 4px 0; border-color:#374151;'>
-✔️ Asing: {asing_html}<br>
-✔️ Bandar: {bandar_html}<br>
-✔️ VWAP: <strong style='color:{vwap_color};'>{data['vwap_stat']}</strong>
-</div>
-<div style='margin-top: auto;'><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{stat_flow}</strong></div>
-</div>"""
-
-box5 = f"""<div style='height: 180px; display: flex; flex-direction: column;'>
-<div><span style='font-size: 0.95rem; font-weight: bold;'>⏳ MULTI-TIMEFRAME MATRIX</span><br><hr style='margin: 4px 0; border-color:#374151;'>
-<span style='color:#9ca3af;'>Matrix:</span> <strong style='color:#4ade80;'>{data['mtf_status']}</strong><br>
-<span style='color:#9ca3af;'>Fibo:</span> <strong style='color:#f3f4f6;'>{data['fibo_stat']}</strong><br>
-<br>✔️ VPA: <strong style='color:{vpa_color};'>{data['vpa_stat']}</strong>
-</div>
-<div style='margin-top: auto;'><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{stat_mtf}</strong></div>
-</div>"""
-
-box6 = f"""<div style='height: 180px; display: flex; flex-direction: column;'>
-<div><span style='font-size: 0.95rem; font-weight: bold;'>📈 TEKNIKAL & PRICE ACTION</span><br><hr style='margin: 4px 0; border-color:#374151;'>
-📌 <span style='color:#9ca3af;'>EMA:</span> <strong>{data['ema_cross']}</strong><br>
-📌 <span style='color:#9ca3af;'>VCP:</span> <strong style='color:{vcp_color};'>{data['vcp_stat']}</strong><br>
-📌 <span style='color:#9ca3af;'>RSI:</span> <strong>{data['rsi_val']:.1f} ({data['rsi_status']})</strong>
-</div>
-<div style='margin-top: auto;'><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{stat_tech}</strong></div>
-</div>"""
+box1 = f"<div><span style='font-size: 0.95rem; font-weight: bold;'>💼 FUNDAMENTAL & GROWTH</span><br><hr style='margin: 4px 0; border-color:#374151;'><div style='display:flex; justify-content: space-between;'><span>PER:</span> <strong style='color:{data['pe_col']};'>{data['pe_str']}</strong></div><div style='display:flex; justify-content: space-between;'><span>PBV:</span> <strong style='color:{data['pbv_col']};'>{data['pbv_str']}</strong></div><div style='display:flex; justify-content: space-between;'><span>ROE:</span> <strong style='color:{data['roe_col']};'>{data['roe_str']}</strong></div><br><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{data['stat_funda']}</strong></div>"
+box2 = f"<div><span style='font-size: 0.95rem; font-weight: bold;'>🛡️ MONEY MANAGEMENT</span><br><hr style='margin: 4px 0; border-color:#374151;'><span style='color:#9ca3af;'>Modal:</span> <strong>Rp{modal_input:,.0f}</strong><br><span style='color:#9ca3af;'>Risiko ({risk_pct*100}%):</span> <span style='color:#f87171;'>-Rp{max_loss_rp:,.0f}</span><br><br>✔️ Maks Beli: <strong style='color:#4ade80;'>{max_lot} LOT</strong><br><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{stat_mm}</strong></div>"
+box3 = f"<div><span style='font-size: 0.95rem; font-weight: bold;'>📊 STATISTIC SAAT INI</span><br><hr style='margin: 4px 0; border-color:#374151;'><div style='display:flex; justify-content: space-between;'><span>Market Cap:</span> <strong style='color:#f3f4f6;'>{data['mc_str']}</strong></div><div style='display:flex; justify-content: space-between;'><span>Rasio Harga:</span> <strong style='color:#f3f4f6;'>{data['ps_ratio']}</strong></div><div style='display:flex; justify-content: space-between;'><span>EPS (TTM):</span> <strong style='color:#f3f4f6;'>{data['eps_ttm']}</strong></div><br><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{data['stat_stat']}</strong></div>"
+box4 = f"<div><span style='font-size: 0.95rem; font-weight: bold;'>🦅 INSTITUTIONAL FLOW</span><br><hr style='margin: 4px 0; border-color:#374151;'>✔️ Asing: {asing_html}<br>✔️ Bandar: {bandar_html}<br>✔️ VWAP: <strong style='color:{vwap_color};'>{data['vwap_stat']}</strong><br><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{stat_flow}</strong></div>"
+box5 = f"<div><span style='font-size: 0.95rem; font-weight: bold;'>⏳ MULTI-TIMEFRAME MATRIX</span><br><hr style='margin: 4px 0; border-color:#374151;'><span style='color:#9ca3af;'>Matrix:</span> <strong style='color:#4ade80;'>{data['mtf_status']}</strong><br><span style='color:#9ca3af;'>Fibo:</span> <strong style='color:#f3f4f6;'>{data['fibo_stat']}</strong><br>✔️ VPA: <strong style='color:{vpa_color};'>{data['vpa_stat']}</strong><br><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{stat_mtf}</strong></div>"
+box6 = f"<div><span style='font-size: 0.95rem; font-weight: bold;'>📈 TEKNIKAL & PRICE ACTION</span><br><hr style='margin: 4px 0; border-color:#374151;'>📌 <span style='color:#9ca3af;'>Bands:</span> <strong style='color:#f3f4f6;'>{data['bb_stat']}</strong><br>📌 <span style='color:#9ca3af;'>VCP:</span> <strong style='color:{vcp_color};'>{data['vcp_stat']}</strong><br>📌 <span style='color:#9ca3af;'>RSI:</span> <strong>{data['rsi_val']:.1f}</strong><br><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{stat_tech}</strong></div>"
 
 col_b1, col_b2, col_b3 = st.columns(3)
 with col_b1:
@@ -462,9 +417,42 @@ with col_b6:
     with st.container(border=True): st.markdown(box6, unsafe_allow_html=True)
 
 # ==========================================
+# --- ENGINE 3: EXCEL DATABASE EXPORT ---
+# ==========================================
+st.markdown("### 💾 Ekspor Data (Excel Automator)")
+export_data = {
+    "Tanggal": today_time_str,
+    "Ticker": ticker_input,
+    "Harga Saat Ini": p_val,
+    "Batas ARA": ara_val,
+    "Batas ARB": arb_val,
+    "Skor AI": score,
+    "Win Rate": win_rate.split(' ')[0],
+    "Rekomendasi": "HK" if score >=9 else ("Antre" if score >=5 else "Wait & See"),
+    "Bandar": status_bandar.split(' ')[0],
+    "Asing": status_asing.split(' ')[0],
+    "VPA Volume (%)": int(data['vol_ratio']),
+    "Risk/Reward": f"1:{round(reward / risk_per_share, 1) if risk_per_share > 0 else 0}",
+    "Max Beli (Lot)": max_lot
+}
+df_export = pd.DataFrame([export_data])
+output = io.BytesIO()
+with pd.ExcelWriter(output, engine='openpyxl') as writer:
+    df_export.to_excel(writer, index=False, sheet_name='Quant_Data')
+processed_data = output.getvalue()
+
+st.download_button(
+    label="⬇️ Unduh Data ke Saham_Premium_Ecosystem_Final.xlsx",
+    data=processed_data,
+    file_name=f'Saham_Premium_Ecosystem_Final.xlsx',
+    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    use_container_width=True
+)
+
+st.markdown("<br><hr>", unsafe_allow_html=True)
+# ==========================================
 # --- 4. PUSAT DATA PASAR ---
 # ==========================================
-st.markdown("<br><hr>", unsafe_allow_html=True)
 st.markdown("### 📊 Pusat Data Pasar (IHSG)")
 tab_movers, tab_screener = st.tabs(["🔥 Top Movers & Trending", "🔎 Advanced Stock Scanner"])
 

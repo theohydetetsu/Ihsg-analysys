@@ -25,9 +25,9 @@ hr {margin-top: 0.4rem; margin-bottom: 0.4rem; border-color: #374151;}
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', unsafe_allow_html=True)
 
 # ==========================================
-# --- PANEL KONTROL V17 ---
+# --- PANEL KONTROL V19 ---
 # ==========================================
-st.markdown("### ⚙️ PANEL KONTROL (ULTIMATE QUANT SNIPER V17)")
+st.markdown("### ⚙️ PANEL KONTROL (ULTIMATE QUANT SNIPER V19)")
 
 col_in1, col_in2, col_in3, col_in4 = st.columns(4)
 with col_in1:
@@ -52,28 +52,45 @@ ticker_tv = f"IDX:{ticker_input}"
 st.markdown("---")
 
 # ==========================================
-# --- MESIN KALKULASI DEWA V17 (ANTI-FOMO) ---
+# --- MESIN KALKULASI IHSG TRAFFIC LIGHT ---
+# ==========================================
+@st.cache_data(ttl=300)
+def get_ihsg_status():
+    try:
+        ihsg = yf.Ticker("^JKSE")
+        hist = ihsg.history(period="5d")
+        if len(hist) >= 2:
+            prev_close = hist['Close'].iloc[-2]
+            curr_price = hist['Close'].iloc[-1]
+            change_pct = ((curr_price - prev_close) / prev_close) * 100
+            if change_pct > 0.3: return f"🟢 IHSG AMAN (+{change_pct:.2f}%)", "#4ade80"
+            elif change_pct < -0.3: return f"🔴 IHSG RAWAN ({change_pct:.2f}%)", "#f87171"
+            else: return f"🟡 IHSG SIDEWAYS ({change_pct:.2f}%)", "#fbbf24"
+        return "⚪ IHSG OFFLINE", "#9ca3af"
+    except:
+        return "⚪ IHSG ERROR", "#9ca3af"
+
+ihsg_text, ihsg_color = get_ihsg_status()
+
+# ==========================================
+# --- MESIN KALKULASI DEWA V19 ---
 # ==========================================
 @st.cache_data(ttl=60)
 def get_stock_data(ticker_symbol, manual_price=0):
     try:
         stock = yf.Ticker(ticker_symbol)
-        
         hist = stock.history(period="6mo")
         hist = hist.dropna(subset=['Close', 'High', 'Low', 'Volume'])
         if hist.empty or len(hist) < 60: return None
             
         hist_latest_price = hist['Close'].iloc[-1]
-        
         try: info = stock.info
         except: info = {}
         
         api_live_price = info.get('currentPrice', info.get('regularMarketPrice', 0))
         api_prev_close = info.get('previousClose', 0)
         
-        if api_prev_close <= 0 and len(hist) > 1:
-            api_prev_close = hist['Close'].iloc[-2]
-            
+        if api_prev_close <= 0 and len(hist) > 1: api_prev_close = hist['Close'].iloc[-2]
         latest_price = hist_latest_price
         
         if manual_price > 0:
@@ -90,7 +107,6 @@ def get_stock_data(ticker_symbol, manual_price=0):
         if latest_price <= 0: latest_price = 1 
         prev_price = float(api_prev_close)
         change_pct = ((latest_price - prev_price) / prev_price) * 100
-        
         company_name = info.get('longName', f"PT {ticker_symbol.replace('.JK', '')} Tbk")
         
         if api_prev_close < 200: limit_pct = 0.35
@@ -99,17 +115,14 @@ def get_stock_data(ticker_symbol, manual_price=0):
         
         ara_price = int(api_prev_close * (1 + limit_pct))
         arb_price = int(api_prev_close * (1 - limit_pct))
-        
         jarak_ara = ((ara_price - latest_price) / latest_price) * 100
         jarak_arb = ((latest_price - arb_price) / latest_price) * 100
 
         def safe_pct(val): return val if val is not None else 0
         def safe_num(val): return val if val is not None else 0
         
-        pe_raw = safe_num(info.get('trailingPE'))
-        pbv_raw = safe_num(info.get('priceToBook'))
-        roe_raw = safe_pct(info.get('returnOnEquity'))
-        npm_raw = safe_pct(info.get('profitMargins'))
+        pe_raw, pbv_raw = safe_num(info.get('trailingPE')), safe_num(info.get('priceToBook'))
+        roe_raw, npm_raw = safe_pct(info.get('returnOnEquity')), safe_pct(info.get('profitMargins'))
         eps_g_raw = safe_pct(info.get('earningsQuarterlyGrowth'))
         
         pe_str = f"{pe_raw:.2f}x" if pe_raw > 0 else "N/A"
@@ -120,8 +133,7 @@ def get_stock_data(ticker_symbol, manual_price=0):
         
         def get_color(val, threshold, mode="high_good"):
             if val == 0 or val == "N/A": return "#9ca3af"
-            if mode == "high_good": return "#4ade80" if val > threshold else "#f87171"
-            else: return "#4ade80" if val < threshold else "#f87171"
+            return "#4ade80" if (val > threshold if mode == "high_good" else val < threshold) else "#f87171"
 
         pe_col = get_color(pe_raw, 20, "low_good")
         pbv_col = get_color(pbv_raw, 2, "low_good")
@@ -138,29 +150,23 @@ def get_stock_data(ticker_symbol, manual_price=0):
         ps_ratio = safe_num(info.get('priceToSalesTrailing12Months'))
         
         officers = info.get('companyOfficers', [])
-        ceo_name = "N/A"
+        ceo_name = officers[0].get('name', 'N/A') if officers else "N/A"
         for officer in officers:
             if 'CEO' in officer.get('title', '').upper(): ceo_name = officer.get('name', 'N/A'); break
-        if ceo_name == "N/A" and officers: ceo_name = officers[0].get('name', 'N/A')
+            
         stat_stat = "<span style='color:#4ade80;'>BAGUS (Bluechip)</span>" if mc_raw >= 10e12 else ("<span style='color:#fbbf24;'>STABIL (Midcap)</span>" if mc_raw >= 1e12 else "<span style='color:#f87171;'>JELEK (Smallcap)</span>")
 
         close_prices = hist['Close']
-        ema9 = close_prices.ewm(span=9, adjust=False).mean().iloc[-1]
         ema21 = close_prices.ewm(span=21, adjust=False).mean().iloc[-1]
-        ema_cross = "Bullish" if latest_price > ema21 else "Bearish"
-        trend_status = "Bullish" if latest_price > ema21 else "Bearish"
+        ema_cross = trend_status = "Bullish" if latest_price > ema21 else "Bearish"
         
-        sma5 = close_prices.rolling(5).mean().iloc[-1]
-        sma20 = close_prices.rolling(20).mean().iloc[-1]
-        sma60 = close_prices.rolling(60).mean().iloc[-1]
-        
+        sma5, sma20, sma60 = close_prices.rolling(5).mean().iloc[-1], close_prices.rolling(20).mean().iloc[-1], close_prices.rolling(60).mean().iloc[-1]
         if latest_price > sma5 and latest_price > sma20 and latest_price > sma60: mtf_status, mtf_score = "ALIGNMENT BULLISH", 2
         elif latest_price > sma20: mtf_status, mtf_score = "MODERATE (Campur)", 1
         else: mtf_status, mtf_score = "DEAD CROSS (Bearish)", 0
 
         std20 = close_prices.rolling(20).std().iloc[-1]
-        upper_bb = sma20 + (2 * std20)
-        lower_bb = sma20 - (2 * std20)
+        upper_bb, lower_bb = sma20 + (2 * std20), sma20 - (2 * std20)
         if latest_price > upper_bb: bb_stat, bb_score = "Breakout Atas (Kuat)", 2
         elif latest_price < lower_bb: bb_stat, bb_score = "Breakout Bawah (Lemah)", 0
         else: bb_stat, bb_score = "Di Dalam Bands (Normal)", 1
@@ -171,21 +177,16 @@ def get_stock_data(ticker_symbol, manual_price=0):
         rs = gain / loss
         rsi_val = (100 - (100 / (1 + rs))).iloc[-1]
         if pd.isna(rsi_val): rsi_val = 50
-        
-        if rsi_val >= 70: rsi_status = "Overbought"
-        elif rsi_val <= 30: rsi_status = "Oversold"
-        else: rsi_status = "Netral"
+        rsi_status = "Overbought" if rsi_val >= 70 else ("Oversold" if rsi_val <= 30 else "Netral")
         
         res_terdekat = hist['High'].tail(20).max()
         if latest_price > res_terdekat: res_terdekat = latest_price * 1.05
         sup_terdekat = hist['Low'].tail(20).min()
         if latest_price < sup_terdekat: sup_terdekat = latest_price * 0.95
         
-        swing_high = hist['High'].tail(60).max()
-        swing_low = hist['Low'].tail(60).min()
+        swing_high, swing_low = hist['High'].tail(60).max(), hist['Low'].tail(60).min()
         diff = swing_high - swing_low
-        fibo_382 = swing_high - (0.382 * diff)
-        fibo_618 = swing_high - (0.618 * diff)
+        fibo_382, fibo_618 = swing_high - (0.382 * diff), swing_high - (0.618 * diff)
         if latest_price >= fibo_382: fibo_stat, fibo_score = "Aman (> 38.2%)", 1
         elif latest_price >= fibo_618: fibo_stat, fibo_score = "Golden Pocket", 1
         else: fibo_stat, fibo_score = "Jebol (< 61.8%)", 0
@@ -200,8 +201,7 @@ def get_stock_data(ticker_symbol, manual_price=0):
         else: vpa_stat, vpa_score = f"Volume Normal ({int(vol_ratio)}%)", 0
 
         daily_range = hist['High'] - hist['Low']
-        atr_20 = daily_range.rolling(20).mean().iloc[-1]
-        atr_5 = daily_range.rolling(5).mean().iloc[-1]
+        atr_20, atr_5 = daily_range.rolling(20).mean().iloc[-1], daily_range.rolling(5).mean().iloc[-1]
         vol_5 = hist['Volume'].rolling(5).mean().iloc[-1]
         if atr_5 < (atr_20 * 0.8) and vol_5 < vol_ma20 and latest_price > sma60: vcp_stat, vcp_score = "Terdeteksi (Breakout)", 1
         elif atr_5 < atr_20: vcp_stat, vcp_score = "Menyempit (Formasi)", 0
@@ -214,7 +214,6 @@ def get_stock_data(ticker_symbol, manual_price=0):
                 vwap_kalkulasi = (typical_price * intraday['Volume']).cumsum() / intraday['Volume'].cumsum()
                 vwap_val = vwap_kalkulasi.iloc[-1]
                 if pd.isna(vwap_val): vwap_val = 0
-                
                 if latest_price > (vwap_val * 1.005): vwap_stat, vwap_score = "Atas VWAP (Bullish)", 1
                 elif latest_price < (vwap_val * 0.995): vwap_stat, vwap_score = "Bawah VWAP (Lemah)", 0
                 else: vwap_stat, vwap_score = "Area VWAP", 1
@@ -240,7 +239,7 @@ def get_stock_data(ticker_symbol, manual_price=0):
 
 data = get_stock_data(ticker_yf, manual_price_input)
 if data is None:
-    st.error(f"❌ Saham **{ticker_input}** tidak valid atau Yahoo Finance sedang membatasi akses (Rate Limit). Coba beberapa saat lagi atau masukkan harga manual.")
+    st.error(f"❌ Saham **{ticker_input}** tidak valid atau Yahoo Finance sedang membatasi akses (Rate Limit).")
     st.stop()
 
 def s_int(val):
@@ -287,26 +286,36 @@ try: max_lot = int((max_loss_rp / risk_per_share) / 100) if pd.notna(max_loss_rp
 except: max_lot = 0
 if max_lot < 1: max_lot = 0
 
-# KALKULASI RISK REWARD DINAIIKAN KE ATAS UNTUK LOGIKA ANTI FOMO
 reward = r_val - p_val
 rr_ratio = round(reward / risk_per_share, 1) if risk_per_share > 0 else 0
 
 # ----------------------------------------------------
-# 🛡️ ENGINE ANTI FOMO & JEBAKAN PUCUK (V17)
+# 🛡️ ENGINE ANTI FOMO & JEBAKAN PUCUK
 # ----------------------------------------------------
 if data['rsi_val'] >= 85: 
-    entry_val = f"<span style='color:#f87171; font-weight:bold;'>⚠️ PUCUK (RSI Over) - JANGAN HK!</span>"
+    entry_val = f"<span style='color:#f87171; font-weight:bold;'>⚠️ JANGAN HK! (RSI Pucuk)</span>"
+    border_glow = "0 0 15px rgba(248, 113, 113, 0.4)" 
+    accent_color = "#f87171" 
 elif rr_ratio < 0.5 and score >= 10:
-    entry_val = f"<span style='color:#fbbf24; font-weight:bold;'>⚠️ R:R Jelek (Tunggu Koreksi)</span>"
+    entry_val = f"<span style='color:#fbbf24; font-weight:bold;'>⚠️ ANTRE! (R:R Jelek)</span>"
+    border_glow = "0 0 15px rgba(251, 191, 36, 0.4)"
+    accent_color = "#fbbf24" 
 elif data['jarak_ara'] < 3.0: 
-    entry_val = f"<span style='color:#f87171; font-weight:bold;'>⚠️ RAWAN ARA (Hindari HK)</span>"
+    entry_val = f"<span style='color:#f87171; font-weight:bold;'>⚠️ HINDARI! (Rawan ARA)</span>"
+    border_glow = "0 0 15px rgba(248, 113, 113, 0.4)"
+    accent_color = "#f87171" 
 elif score >= 10: 
-    entry_val = f"<span style='color:#4ade80; font-weight:bold;'>Rp{p_val} (HK)</span>"
+    entry_val = f"<span style='color:#4ade80; font-weight:bold;'>Rp{p_val} (HAJAR KANAN)</span>"
+    border_glow = "0 0 15px rgba(74, 222, 128, 0.4)"
+    accent_color = "#4ade80" 
 elif score >= 6: 
-    entry_val = f"<span style='color:#fbbf24; font-weight:bold;'>Rp{s_val} (Antre)</span>"
+    entry_val = f"<span style='color:#fbbf24; font-weight:bold;'>Rp{s_val} (ANTRE BELI)</span>"
+    border_glow = "0 0 15px rgba(251, 191, 36, 0.4)"
+    accent_color = "#fbbf24" 
 else: 
-    entry_val = "<span style='color:#f87171; font-weight:bold;'>Wait & See</span>"
-# ----------------------------------------------------
+    entry_val = "<span style='color:#f87171; font-weight:bold;'>WAIT & SEE</span>"
+    border_glow = "0 0 15px rgba(248, 113, 113, 0.4)"
+    accent_color = "#f87171" 
 
 # ==========================================
 # --- 1. HEADER DASHBOARD ---
@@ -318,16 +327,15 @@ now_wib = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=7)))
 today_time_str = now_wib.strftime("%d %B %Y, %H:%M WIB") 
 logo_url = f"https://assets.parqet.com/logos/symbol/{ticker_input}.JK?format=png"
 
-col_h1, col_h2, col_h3, col_h4 = st.columns([1.5, 1.6, 1.1, 1.0])
+col_h1, col_h2, col_h3, col_h4 = st.columns([1.5, 1.4, 1.0, 1.4])
 
 with col_h1:
-    st.markdown("<span style='font-size: 0.95rem; color:#9ca3af; font-weight:bold; letter-spacing: 1px; white-space: nowrap;'>QUANT SNIPER SYSTEM</span>", unsafe_allow_html=True)
+    st.markdown(f"<div style='display:inline-block; background:rgba(255,255,255,0.05); border:1px solid #374151; padding:4px 10px; border-radius:6px; margin-bottom:8px;'><span style='color:{ihsg_color}; font-size:0.8rem; font-weight:bold; letter-spacing:0.5px;'>{ihsg_text}</span></div>", unsafe_allow_html=True)
     st.markdown(f"""<div style="display: flex; align-items: center; gap: 10px; margin-top: 5px; margin-bottom: 5px;">
     <img src="{logo_url}" width="60" height="60" style="border-radius: 12px; background: white; padding: 4px; flex-shrink: 0;" onerror="this.style.display='none'">
     <div style='color:#f3f4f6; font-size: clamp(2rem, 4vw, 3.8rem); font-weight: 900; line-height: 1; letter-spacing: 1px;'>{ticker_input}</div>
     </div>""", unsafe_allow_html=True)
     st.markdown(f"<div style='color:#d1d5db; font-size:1.05rem; font-weight:bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>{data['name']}</div>", unsafe_allow_html=True)
-    st.markdown(f"<div style='font-size:0.85rem; color:#60a5fa; margin-top: 4px; font-weight: bold;'>Update {today_time_str}</div>", unsafe_allow_html=True)
 
 with col_h2:
     st.markdown("<div style='text-align: center; margin-top: 15px;'>", unsafe_allow_html=True)
@@ -347,13 +355,25 @@ with col_h3:
     st.markdown("</div>", unsafe_allow_html=True)
 
 with col_h4:
-    rr_html = f"<div style='background:#1e3a8a; color:white; padding:4px; border-radius:4px; text-align:center; font-weight:bold; font-size:0.75rem; margin-top: 6px;'>⚖️ R:R = 1 : {rr_ratio}</div>"
+    rr_bg = "linear-gradient(90deg, #1e3a8a, #3b82f6)" if rr_ratio >= 1.5 else ("linear-gradient(90deg, #991b1b, #ef4444)" if rr_ratio < 0.5 else "linear-gradient(90deg, #78350f, #d97706)")
+    rr_html = f"<div style='background: {rr_bg}; color:white; padding:6px; border-radius:6px; text-align:center; font-weight:900; font-size:0.85rem; margin-top: 10px; letter-spacing: 1px; box-shadow: 0 2px 4px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2);'>⚖️ R:R = 1 : {rr_ratio}</div>"
     st.markdown(f"""
-    <div style='background: linear-gradient(145deg, #1f2937, #111827); border: 1px solid #374151; padding: 10px; border-radius: 10px; margin-top: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);'>
-        <div style='color:#9ca3af; font-size:0.75rem; font-weight:bold; letter-spacing:1px; margin-bottom: 6px; white-space: nowrap;'>🎯 TRADE PLAN & SNIPER</div>
-        <div style='display:flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 2px;'><span style='color:#d1d5db;'>Entry:</span> <span>{entry_val}</span></div>
-        <div style='display:flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 2px;'><span style='color:#d1d5db;'>Target:</span> <span style='color:#4ade80; font-weight:bold;'>Rp{r_val}</span></div>
-        <div style='display:flex; justify-content: space-between; font-size: 0.85rem;'><span style='color:#d1d5db;'>Stop Loss:</span> <span style='color:#f87171; font-weight:bold;'>Rp{s_val}</span></div>
+    <div style='background: linear-gradient(145deg, #111827, #000000); border: 1px solid {accent_color}; padding: 15px; border-radius: 12px; box-shadow: {border_glow}; position: relative; overflow: hidden; margin-top: 8px;'>
+        <div style='position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: {accent_color}; box-shadow: 0 0 10px {accent_color};'></div>
+        <div style='color:#e5e7eb; font-size:0.8rem; font-weight:800; letter-spacing:1.5px; margin-bottom: 12px; text-align: center; text-transform: uppercase;'>
+            <i class="fa-solid fa-crosshairs" style="color:{accent_color};"></i> FINAL EXECUTION
+        </div>
+        <div style='display:flex; flex-direction: column; gap: 8px;'>
+            <div style='display:flex; justify-content: space-between; align-items: center; font-size: 0.85rem; padding-bottom: 6px; border-bottom: 1px dashed #374151;'>
+                <span style='color:#9ca3af;'>Entry Point</span> <span style='text-align: right; line-height: 1.1;'>{entry_val}</span>
+            </div>
+            <div style='display:flex; justify-content: space-between; align-items: center; font-size: 0.85rem; padding-bottom: 6px; border-bottom: 1px dashed #374151;'>
+                <span style='color:#9ca3af;'>Take Profit</span> <span style='color:#4ade80; font-weight:900; font-size: 1.05rem;'>Rp{r_val}</span>
+            </div>
+            <div style='display:flex; justify-content: space-between; align-items: center; font-size: 0.85rem;'>
+                <span style='color:#9ca3af;'>Stop Loss</span> <span style='color:#f87171; font-weight:900; font-size: 1.05rem;'>Rp{s_val}</span>
+            </div>
+        </div>
         {rr_html}
     </div>
     """, unsafe_allow_html=True)
@@ -415,8 +435,6 @@ vpa_color = "#4ade80" if data['vpa_score'] == 1 else "#fbbf24"
 
 asing_html = f"<span style='color:#4ade80;'>NET BUY</span>" if "NET BUY" in status_asing else (f"<span style='color:#f87171;'>NET SELL</span>" if "NET SELL" in status_asing else f"<span style='color:#fbbf24;'>Netral</span>")
 bandar_html = f"<span style='color:#4ade80;'>Akumulasi</span>" if "Akumulasi" in status_bandar else (f"<span style='color:#f87171;'>Distribusi</span>" if "Distribusi" in status_bandar else f"<span style='color:#fbbf24;'>Netral</span>")
-
-# Pewarnaan khusus RSI untuk peringatan pucuk
 rsi_color = "#f87171" if data['rsi_val'] >= 85 else ("#4ade80" if data['rsi_val'] <= 40 else "#f3f4f6")
 
 box1 = f"<div><span style='font-size: 0.95rem; font-weight: bold;'>💼 FUNDAMENTAL & GROWTH</span><br><hr style='margin: 4px 0; border-color:#374151;'><div style='display:flex; justify-content: space-between;'><span>PER:</span> <strong style='color:{data['pe_col']};'>{data['pe_str']}</strong></div><div style='display:flex; justify-content: space-between;'><span>PBV:</span> <strong style='color:{data['pbv_col']};'>{data['pbv_str']}</strong></div><div style='display:flex; justify-content: space-between;'><span>ROE:</span> <strong style='color:{data['roe_col']};'>{data['roe_str']}</strong></div><br><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{data['stat_funda']}</strong></div>"

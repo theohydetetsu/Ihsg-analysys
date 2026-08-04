@@ -25,35 +25,37 @@ hr {margin-top: 0.4rem; margin-bottom: 0.4rem; border-color: #374151;}
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', unsafe_allow_html=True)
 
 # ==========================================
-# --- PANEL KONTROL ---
+# --- PANEL KONTROL V15 (KEMBALI 4 KOLOM ATAS) ---
 # ==========================================
-st.markdown("### ⚙️ PANEL KONTROL (ULTIMATE QUANT SNIPER V14)")
+st.markdown("### ⚙️ PANEL KONTROL (ULTIMATE QUANT SNIPER V15)")
 
-col_in1, col_in2, col_in3 = st.columns(3)
+col_in1, col_in2, col_in3, col_in4 = st.columns(4)
 with col_in1:
-    ticker_input = st.text_input("🔍 1. Kode Saham (Ketik & Enter):", "BBCA").upper().strip()
+    ticker_input = st.text_input("🔍 1. Kode Saham:", "BBCA").upper().strip()
 with col_in2:
-    status_bandar = st.selectbox("🕵️‍♂️ 2. Bandarmology (Manual):", ["Akumulasi (Net Buy)", "Netral / Sepi", "Distribusi (Net Sell)"])
+    manual_price_input = st.number_input("🎯 2. Harga Live (Jika YF Delay):", min_value=0, value=0, step=1)
 with col_in3:
-    status_bidoffer = st.selectbox("⚖️ 3. Bid & Offer (Manual):", ["Dominan BID (Demand Kuat)", "Berimbang (Normal)", "Dominan OFFER (Supply Kuat)"])
+    status_bandar = st.selectbox("🕵️‍♂️ 3. Bandar:", ["Akumulasi (Net Buy)", "Netral / Sepi", "Distribusi (Net Sell)"])
+with col_in4:
+    status_bidoffer = st.selectbox("⚖️ 4. Bid & Offer:", ["Dominan BID (Demand Kuat)", "Berimbang (Normal)", "Dominan OFFER (Supply Kuat)"])
 
 col_cf1, col_cf2, col_cf3 = st.columns(3)
 with col_cf1:
-    status_asing = st.selectbox("🦅 4. Jejak Dana Asing (Foreign Flow):", ["Asing NET BUY (Masuk Besar)", "Asing Netral / Mixed", "Asing NET SELL (Keluar)"])
+    status_asing = st.selectbox("🦅 5. Asing (Foreign Flow):", ["Asing NET BUY (Masuk Besar)", "Asing Netral / Mixed", "Asing NET SELL (Keluar)"])
 with col_cf2:
-    modal_input = st.number_input("💰 5. Modal Trading Anda (Rp):", min_value=100000, value=10000000, step=1000000)
+    modal_input = st.number_input("💰 6. Modal Trading (Rp):", min_value=100000, value=10000000, step=1000000)
 with col_cf3:
-    risiko_input = st.selectbox("🛡️ 6. Toleransi Risiko (Cutloss):", ["1% dari Modal (Sangat Konservatif)", "2% dari Modal (Standar Pro)", "3% dari Modal (Agresif)", "5% dari Modal (Sangat Agresif)"], index=1)
+    risiko_input = st.selectbox("🛡️ 7. Toleransi Risiko (Cutloss):", ["1% dari Modal (Sangat Konservatif)", "2% dari Modal (Standar Pro)", "3% dari Modal (Agresif)", "5% dari Modal (Sangat Agresif)"], index=1)
 
 ticker_yf = f"{ticker_input}.JK"
 ticker_tv = f"IDX:{ticker_input}"
 st.markdown("---")
 
 # ==========================================
-# --- MESIN KALKULASI DEWA V14 ---
+# --- MESIN KALKULASI DEWA V15 ---
 # ==========================================
 @st.cache_data(ttl=60)
-def get_stock_data(ticker_symbol):
+def get_stock_data(ticker_symbol, manual_price=0):
     try:
         stock = yf.Ticker(ticker_symbol)
         info = stock.info
@@ -66,8 +68,14 @@ def get_stock_data(ticker_symbol):
         api_prev_close = info.get('previousClose', 0)
         hist_latest_price = hist['Close'].iloc[-1]
             
-        # AUTO-SYNC
-        if api_live_price > 0 and api_live_price != hist_latest_price:
+        # LOGIKA HARGA (Prioritas: Manual -> Web Sync -> History)
+        if manual_price > 0:
+            latest_price = float(manual_price)
+            prev_price = float(api_prev_close) if api_prev_close > 0 else (hist['Close'].iloc[-2] if latest_price == hist_latest_price else hist_latest_price)
+            hist.loc[hist.index[-1], 'Close'] = latest_price
+            if latest_price > hist['High'].iloc[-1]: hist.loc[hist.index[-1], 'High'] = latest_price
+            if latest_price < hist['Low'].iloc[-1]: hist.loc[hist.index[-1], 'Low'] = latest_price
+        elif api_live_price > 0 and api_live_price != hist_latest_price:
             latest_price = float(api_live_price)
             prev_price = float(api_prev_close) if api_prev_close > 0 else hist_latest_price
             hist.loc[hist.index[-1], 'Close'] = latest_price
@@ -81,7 +89,7 @@ def get_stock_data(ticker_symbol):
         change_pct = ((latest_price - prev_price) / prev_price) * 100
         company_name = info.get('longName', f"PT {ticker_symbol.replace('.JK', '')} Tbk")
         
-        # --- ENGINE 1: KALKULASI ARA & ARB IHSG ---
+        # Kalkulasi ARA & ARB
         if api_prev_close < 200: limit_pct = 0.35
         elif 200 <= api_prev_close <= 5000: limit_pct = 0.25
         else: limit_pct = 0.20
@@ -149,13 +157,13 @@ def get_stock_data(ticker_symbol):
         elif latest_price > sma20: mtf_status, mtf_score = "MODERATE (Campur)", 1
         else: mtf_status, mtf_score = "DEAD CROSS (Bearish)", 0
 
-        # --- ENGINE 2: BOLLINGER BANDS VOLATILITAS ---
+        # Bollinger Bands Engine
         std20 = close_prices.rolling(20).std().iloc[-1]
         upper_bb = sma20 + (2 * std20)
         lower_bb = sma20 - (2 * std20)
-        if latest_price > upper_bb: bb_stat = "Breakout Atas (Kuat)"
-        elif latest_price < lower_bb: bb_stat = "Breakout Bawah (Lemah)"
-        else: bb_stat = "Di Dalam Bands (Normal)"
+        if latest_price > upper_bb: bb_stat, bb_score = "Breakout Atas (Kuat)", 2
+        elif latest_price < lower_bb: bb_stat, bb_score = "Breakout Bawah (Lemah)", 0
+        else: bb_stat, bb_score = "Di Dalam Bands (Normal)", 1
 
         delta = close_prices.diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
@@ -218,7 +226,7 @@ def get_stock_data(ticker_symbol):
             'res': res_terdekat, 'sup': sup_terdekat, 'swing_high': swing_high,
             'fibo_618': fibo_618, 'fibo_stat': fibo_stat, 'fibo_score': fibo_score, 
             'ema_cross': ema_cross, 'trend': trend_status, 'rsi_val': rsi_val, 'rsi_status': rsi_status,
-            'vpa_stat': vpa_stat, 'vpa_score': vpa_score, 'bb_stat': bb_stat,
+            'vpa_stat': vpa_stat, 'vpa_score': vpa_score, 'bb_stat': bb_stat, 'bb_score': bb_score,
             'mtf_status': mtf_status, 'mtf_score': mtf_score, 'vwap_val': vwap_val, 'vwap_stat': vwap_stat, 'vwap_score': vwap_score,
             'vcp_stat': vcp_stat, 'vcp_score': vcp_score,
             'pe_str': pe_str, 'pbv_str': pbv_str, 'roe_str': roe_str, 'npm_str': npm_str, 'eps_g_str': eps_g_str,
@@ -230,7 +238,7 @@ def get_stock_data(ticker_symbol):
     except:
         return None
 
-data = get_stock_data(ticker_yf)
+data = get_stock_data(ticker_yf, manual_price_input)
 if data is None:
     st.error(f"❌ Saham **{ticker_input}** tidak valid atau data kurang.")
     st.stop()
@@ -247,8 +255,9 @@ ara_val = s_int(data['ara_price'])
 arb_val = s_int(data['arb_price'])
 
 # ==========================================
-# --- PENILAIAN SKOR & PROBABILITAS ---
+# --- PENILAIAN SKOR & PROBABILITAS (UPDATED V15) ---
 # ==========================================
+# TOTAL MAX SKOR SEKARANG ADALAH 18
 score = 0
 if data['trend'] == "Bullish": score += 2
 score += data['mtf_score']                          
@@ -263,10 +272,12 @@ if data['rsi_status'] in ["Netral", "Oversold"]: score += 1
 score += data['fibo_score']
 score += data['vpa_score']
 score += data['vcp_score'] 
+score += data['bb_score'] # <-- INI TAMBAHAN ENGINE BOLLINGER BANDS!
 
-if score >= 14: win_rate, wr_color = "92% (Sangat Tinggi)", "#4ade80"
-elif score >= 11: win_rate, wr_color = "75% (Tinggi)", "#4ade80"
-elif score >= 7: win_rate, wr_color = "50% (Spekulatif)", "#fbbf24"
+# Penyesuaian Win Rate berdasarkan Skor Maksimal 18
+if score >= 16: win_rate, wr_color = "95% (Sangat Tinggi)", "#4ade80"
+elif score >= 12: win_rate, wr_color = "75% (Tinggi)", "#4ade80"
+elif score >= 8: win_rate, wr_color = "50% (Spekulatif)", "#fbbf24"
 else: win_rate, wr_color = "< 30% (Risiko Bahaya)", "#f87171"
 
 risk_pct = float(risiko_input.split('%')[0]) / 100
@@ -278,9 +289,15 @@ try: max_lot = int((max_loss_rp / risk_per_share) / 100) if pd.notna(max_loss_rp
 except: max_lot = 0
 if max_lot < 1: max_lot = 0
 
-if score >= 9: entry_val = f"<span style='color:#4ade80; font-weight:bold;'>Rp{p_val} (HK)</span>"
-elif score >= 5: entry_val = f"<span style='color:#fbbf24; font-weight:bold;'>Rp{s_val} (Antre)</span>"
-else: entry_val = "<span style='color:#f87171; font-weight:bold;'>Wait & See</span>"
+# Peringatan ARA 
+if data['jarak_ara'] < 3.0: 
+    entry_val = f"<span style='color:#f87171; font-weight:bold;'>RAWAN ARA (Hindari HK)</span>"
+elif score >= 10: 
+    entry_val = f"<span style='color:#4ade80; font-weight:bold;'>Rp{p_val} (HK)</span>"
+elif score >= 6: 
+    entry_val = f"<span style='color:#fbbf24; font-weight:bold;'>Rp{s_val} (Antre)</span>"
+else: 
+    entry_val = "<span style='color:#f87171; font-weight:bold;'>Wait & See</span>"
 
 # ==========================================
 # --- 1. HEADER DASHBOARD ---
@@ -305,11 +322,11 @@ with col_h1:
 
 with col_h2:
     st.markdown("<div style='text-align: center; margin-top: 15px;'>", unsafe_allow_html=True)
-    if score >= 13: st.markdown("<div style='color:#4ade80; font-size: 1.3rem; font-weight:900;'>GOD MODE &nbsp;<span style='font-size: 1rem;'>⭐⭐⭐⭐⭐</span></div>", unsafe_allow_html=True)
-    elif score >= 9: st.markdown("<div style='color:#4ade80; font-size: 1.3rem; font-weight:900;'>STRONG BUY &nbsp;<span style='font-size: 1rem;'>⭐⭐⭐⭐</span></div>", unsafe_allow_html=True)
-    elif score >= 5: st.markdown("<div style='color:#fbbf24; font-size: 1.3rem; font-weight:900;'>HOLD / WAIT &nbsp;<span style='font-size: 1rem;'>⭐⭐⭐</span></div>", unsafe_allow_html=True)
+    if score >= 15: st.markdown("<div style='color:#4ade80; font-size: 1.3rem; font-weight:900;'>GOD MODE &nbsp;<span style='font-size: 1rem;'>⭐⭐⭐⭐⭐</span></div>", unsafe_allow_html=True)
+    elif score >= 11: st.markdown("<div style='color:#4ade80; font-size: 1.3rem; font-weight:900;'>STRONG BUY &nbsp;<span style='font-size: 1rem;'>⭐⭐⭐⭐</span></div>", unsafe_allow_html=True)
+    elif score >= 7: st.markdown("<div style='color:#fbbf24; font-size: 1.3rem; font-weight:900;'>HOLD / WAIT &nbsp;<span style='font-size: 1rem;'>⭐⭐⭐</span></div>", unsafe_allow_html=True)
     else: st.markdown("<div style='color:#f87171; font-size: 1.3rem; font-weight:900;'>SELL / AVOID &nbsp;<span style='font-size: 1rem;'>⭐</span></div>", unsafe_allow_html=True)
-    st.markdown(f"<div style='color:#fbbf24; font-size: 2.5rem; font-weight: 900; line-height:1.2;'>🌟 {score}.0<span style='font-size:1.2rem; color:#9ca3af;'>/16</span></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='color:#fbbf24; font-size: 2.5rem; font-weight: 900; line-height:1.2;'>🌟 {score}.0<span style='font-size:1.2rem; color:#9ca3af;'>/18</span></div>", unsafe_allow_html=True)
     st.markdown(f"<div style='font-size: 0.95rem; color:#9ca3af;'>Win: <strong style='color:{wr_color};'>{win_rate}</strong></div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -336,7 +353,7 @@ with col_h4:
 st.divider()
 
 # ==========================================
-# --- 2. CHART (FULL WIDTH) ---
+# --- 2. CHART (FIXED: 1 VOLUME SAJA) ---
 # ==========================================
 tradingview_html = f"""
 <div style="border-radius: 10px; border: 1px solid #374151; overflow: hidden; background: #111827; margin-bottom: 15px;">
@@ -357,7 +374,7 @@ tradingview_html = f"""
         "hide_legend": false,
         "save_image": false,
         "container_id": "tradingview_chart",
-        "studies": ["Moving Average@tv-basicstudies", "Volume@tv-basicstudies"]
+        "studies": ["Moving Average@tv-basicstudies"] 
       }});
       </script>
     </div>
@@ -368,7 +385,6 @@ components.html(tradingview_html, height=430)
 # ==========================================
 # --- 3. KOTAK ANALISA ---
 # ==========================================
-# TAMPILAN ARA / ARB BARU (ENGINE 1)
 st.markdown(f"""
 <div style='display:flex; justify-content:space-around; background:#111827; border: 1px solid #374151; padding:10px; border-radius:10px; margin-bottom: 15px;'>
     <div style='text-align:center;'>🚀 <span style='color:#9ca3af; font-size:0.9rem;'>Batas ARA:</span> <strong style='color:#4ade80; font-size:1.1rem;'>Rp{ara_val}</strong> <span style='color:#4ade80; font-size:0.8rem;'>(+{data['jarak_ara']:.1f}%)</span></div>
@@ -378,13 +394,14 @@ st.markdown(f"""
 
 if max_lot > 0: stat_mm = "<span style='color:#4ade80;'>BAGUS</span>"
 else: stat_mm = "<span style='color:#f87171;'>JELEK</span>"
-if score >= 11: stat_flow = "<span style='color:#4ade80;'>BAGUS (Akumulasi Kuat)</span>"
-elif score >= 6: stat_flow = "<span style='color:#fbbf24;'>STABIL (Netral)</span>"
+if score >= 12: stat_flow = "<span style='color:#4ade80;'>BAGUS (Akumulasi Kuat)</span>"
+elif score >= 7: stat_flow = "<span style='color:#fbbf24;'>STABIL (Netral)</span>"
 else: stat_flow = "<span style='color:#f87171;'>JELEK (Distribusi)</span>"
 stat_mtf = "<span style='color:#4ade80;'>BAGUS</span>" if "ALIGNMENT BULLISH" in data['mtf_status'] and data['vpa_score'] == 1 else ("<span style='color:#f87171;'>JELEK</span>" if "BEARISH" in data['mtf_status'] else "<span style='color:#fbbf24;'>STABIL</span>")
-stat_tech = "<span style='color:#4ade80;'>BAGUS (Breakout)</span>" if "Bullish" in data['ema_cross'] and data['vcp_score'] == 1 else ("<span style='color:#f87171;'>JELEK (Downtrend)</span>" if "Bearish" in data['ema_cross'] else "<span style='color:#fbbf24;'>STABIL (Konsolidasi)</span>")
+stat_tech = "<span style='color:#4ade80;'>BAGUS (Trend Kuat)</span>" if "Bullish" in data['ema_cross'] and (data['vcp_score'] == 1 or data['bb_score'] == 2) else ("<span style='color:#f87171;'>JELEK (Downtrend)</span>" if "Bearish" in data['ema_cross'] else "<span style='color:#fbbf24;'>STABIL (Konsolidasi)</span>")
 
 vcp_color = "#4ade80" if data['vcp_score'] == 1 else ("#fbbf24" if "Menyempit" in data['vcp_stat'] else "#9ca3af")
+bb_color = "#4ade80" if data['bb_score'] == 2 else ("#f87171" if data['bb_score'] == 0 else "#f3f4f6")
 vwap_color = "#4ade80" if data['vwap_score'] == 1 else "#f87171"
 vpa_color = "#4ade80" if data['vpa_score'] == 1 else "#fbbf24"
 
@@ -396,7 +413,7 @@ box2 = f"<div><span style='font-size: 0.95rem; font-weight: bold;'>🛡️ MONEY
 box3 = f"<div><span style='font-size: 0.95rem; font-weight: bold;'>📊 STATISTIC SAAT INI</span><br><hr style='margin: 4px 0; border-color:#374151;'><div style='display:flex; justify-content: space-between;'><span>Market Cap:</span> <strong style='color:#f3f4f6;'>{data['mc_str']}</strong></div><div style='display:flex; justify-content: space-between;'><span>Rasio Harga:</span> <strong style='color:#f3f4f6;'>{data['ps_ratio']}</strong></div><div style='display:flex; justify-content: space-between;'><span>EPS (TTM):</span> <strong style='color:#f3f4f6;'>{data['eps_ttm']}</strong></div><br><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{data['stat_stat']}</strong></div>"
 box4 = f"<div><span style='font-size: 0.95rem; font-weight: bold;'>🦅 INSTITUTIONAL FLOW</span><br><hr style='margin: 4px 0; border-color:#374151;'>✔️ Asing: {asing_html}<br>✔️ Bandar: {bandar_html}<br>✔️ VWAP: <strong style='color:{vwap_color};'>{data['vwap_stat']}</strong><br><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{stat_flow}</strong></div>"
 box5 = f"<div><span style='font-size: 0.95rem; font-weight: bold;'>⏳ MULTI-TIMEFRAME MATRIX</span><br><hr style='margin: 4px 0; border-color:#374151;'><span style='color:#9ca3af;'>Matrix:</span> <strong style='color:#4ade80;'>{data['mtf_status']}</strong><br><span style='color:#9ca3af;'>Fibo:</span> <strong style='color:#f3f4f6;'>{data['fibo_stat']}</strong><br>✔️ VPA: <strong style='color:{vpa_color};'>{data['vpa_stat']}</strong><br><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{stat_mtf}</strong></div>"
-box6 = f"<div><span style='font-size: 0.95rem; font-weight: bold;'>📈 TEKNIKAL & PRICE ACTION</span><br><hr style='margin: 4px 0; border-color:#374151;'>📌 <span style='color:#9ca3af;'>Bands:</span> <strong style='color:#f3f4f6;'>{data['bb_stat']}</strong><br>📌 <span style='color:#9ca3af;'>VCP:</span> <strong style='color:{vcp_color};'>{data['vcp_stat']}</strong><br>📌 <span style='color:#9ca3af;'>RSI:</span> <strong>{data['rsi_val']:.1f}</strong><br><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{stat_tech}</strong></div>"
+box6 = f"<div><span style='font-size: 0.95rem; font-weight: bold;'>📈 TEKNIKAL & PRICE ACTION</span><br><hr style='margin: 4px 0; border-color:#374151;'>📌 <span style='color:#9ca3af;'>Bands:</span> <strong style='color:{bb_color};'>{data['bb_stat']}</strong><br>📌 <span style='color:#9ca3af;'>VCP:</span> <strong style='color:{vcp_color};'>{data['vcp_stat']}</strong><br>📌 <span style='color:#9ca3af;'>RSI:</span> <strong>{data['rsi_val']:.1f}</strong><br><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{stat_tech}</strong></div>"
 
 col_b1, col_b2, col_b3 = st.columns(3)
 with col_b1:
@@ -426,9 +443,9 @@ export_data = {
     "Harga Saat Ini": p_val,
     "Batas ARA": ara_val,
     "Batas ARB": arb_val,
-    "Skor AI": score,
+    "Skor AI": f"{score}/18",
     "Win Rate": win_rate.split(' ')[0],
-    "Rekomendasi": "HK" if score >=9 else ("Antre" if score >=5 else "Wait & See"),
+    "Rekomendasi": "HK" if score >=10 else ("Antre" if score >=6 else "Wait & See"),
     "Bandar": status_bandar.split(' ')[0],
     "Asing": status_asing.split(' ')[0],
     "VPA Volume (%)": int(data['vol_ratio']),

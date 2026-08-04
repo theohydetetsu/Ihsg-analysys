@@ -25,9 +25,9 @@ hr {margin-top: 0.4rem; margin-bottom: 0.4rem; border-color: #374151;}
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', unsafe_allow_html=True)
 
 # ==========================================
-# --- PANEL KONTROL V15 (KEMBALI 4 KOLOM ATAS) ---
+# --- PANEL KONTROL V16 ---
 # ==========================================
-st.markdown("### ⚙️ PANEL KONTROL (ULTIMATE QUANT SNIPER V15)")
+st.markdown("### ⚙️ PANEL KONTROL (ULTIMATE QUANT SNIPER V16)")
 
 col_in1, col_in2, col_in3, col_in4 = st.columns(4)
 with col_in1:
@@ -52,41 +52,52 @@ ticker_tv = f"IDX:{ticker_input}"
 st.markdown("---")
 
 # ==========================================
-# --- MESIN KALKULASI DEWA V15 ---
+# --- MESIN KALKULASI DEWA V16 (BULLETPROOF) ---
 # ==========================================
 @st.cache_data(ttl=60)
 def get_stock_data(ticker_symbol, manual_price=0):
     try:
         stock = yf.Ticker(ticker_symbol)
-        info = stock.info
+        
+        # 1. AMAN-KAN DATA HISTORIS DULU (Paling Jarang Error)
         hist = stock.history(period="6mo")
         hist = hist.dropna(subset=['Close', 'High', 'Low', 'Volume'])
+        if hist.empty or len(hist) < 60: 
+            return None
+            
+        hist_latest_price = hist['Close'].iloc[-1]
         
-        if hist.empty or len(hist) < 60: return None
+        # 2. ISOLASI INFO FUNDAMENTAL (Paling Sering Bikin Error / Rate Limit)
+        try:
+            info = stock.info
+        except:
+            info = {} # Kalau Yahoo ngambek, pakai dictionary kosong agar app tidak mati
         
         api_live_price = info.get('currentPrice', info.get('regularMarketPrice', 0))
         api_prev_close = info.get('previousClose', 0)
-        hist_latest_price = hist['Close'].iloc[-1]
+        
+        # SAFE FALLBACKS (Mencegah Error Pembagian Nol)
+        if api_prev_close <= 0 and len(hist) > 1:
+            api_prev_close = hist['Close'].iloc[-2]
             
+        latest_price = hist_latest_price
+        
         # LOGIKA HARGA (Prioritas: Manual -> Web Sync -> History)
         if manual_price > 0:
             latest_price = float(manual_price)
-            prev_price = float(api_prev_close) if api_prev_close > 0 else (hist['Close'].iloc[-2] if latest_price == hist_latest_price else hist_latest_price)
             hist.loc[hist.index[-1], 'Close'] = latest_price
             if latest_price > hist['High'].iloc[-1]: hist.loc[hist.index[-1], 'High'] = latest_price
             if latest_price < hist['Low'].iloc[-1]: hist.loc[hist.index[-1], 'Low'] = latest_price
         elif api_live_price > 0 and api_live_price != hist_latest_price:
             latest_price = float(api_live_price)
-            prev_price = float(api_prev_close) if api_prev_close > 0 else hist_latest_price
             hist.loc[hist.index[-1], 'Close'] = latest_price
             if latest_price > hist['High'].iloc[-1]: hist.loc[hist.index[-1], 'High'] = latest_price
             if latest_price < hist['Low'].iloc[-1]: hist.loc[hist.index[-1], 'Low'] = latest_price
-        else:
-            latest_price = hist_latest_price
-            prev_price = hist['Close'].iloc[-2]
-            if api_prev_close == 0: api_prev_close = prev_price
             
+        if latest_price <= 0: latest_price = 1 # Mencegah Error Matematika Fatal
+        prev_price = float(api_prev_close)
         change_pct = ((latest_price - prev_price) / prev_price) * 100
+        
         company_name = info.get('longName', f"PT {ticker_symbol.replace('.JK', '')} Tbk")
         
         # Kalkulasi ARA & ARB
@@ -235,12 +246,12 @@ def get_stock_data(ticker_symbol, manual_price=0):
             'ceo': ceo_name, 'stat_stat': stat_stat,
             'ara_price': ara_price, 'arb_price': arb_price, 'jarak_ara': jarak_ara, 'jarak_arb': jarak_arb, 'vol_ratio': vol_ratio
         }
-    except:
+    except Exception as e:
         return None
 
 data = get_stock_data(ticker_yf, manual_price_input)
 if data is None:
-    st.error(f"❌ Saham **{ticker_input}** tidak valid atau data kurang.")
+    st.error(f"❌ Saham **{ticker_input}** tidak valid atau Yahoo Finance sedang membatasi akses (Rate Limit). Coba beberapa saat lagi atau masukkan harga manual.")
     st.stop()
 
 def s_int(val):
@@ -255,9 +266,8 @@ ara_val = s_int(data['ara_price'])
 arb_val = s_int(data['arb_price'])
 
 # ==========================================
-# --- PENILAIAN SKOR & PROBABILITAS (UPDATED V15) ---
+# --- PENILAIAN SKOR & PROBABILITAS ---
 # ==========================================
-# TOTAL MAX SKOR SEKARANG ADALAH 18
 score = 0
 if data['trend'] == "Bullish": score += 2
 score += data['mtf_score']                          
@@ -272,9 +282,8 @@ if data['rsi_status'] in ["Netral", "Oversold"]: score += 1
 score += data['fibo_score']
 score += data['vpa_score']
 score += data['vcp_score'] 
-score += data['bb_score'] # <-- INI TAMBAHAN ENGINE BOLLINGER BANDS!
+score += data['bb_score']
 
-# Penyesuaian Win Rate berdasarkan Skor Maksimal 18
 if score >= 16: win_rate, wr_color = "95% (Sangat Tinggi)", "#4ade80"
 elif score >= 12: win_rate, wr_color = "75% (Tinggi)", "#4ade80"
 elif score >= 8: win_rate, wr_color = "50% (Spekulatif)", "#fbbf24"
@@ -289,7 +298,6 @@ try: max_lot = int((max_loss_rp / risk_per_share) / 100) if pd.notna(max_loss_rp
 except: max_lot = 0
 if max_lot < 1: max_lot = 0
 
-# Peringatan ARA 
 if data['jarak_ara'] < 3.0: 
     entry_val = f"<span style='color:#f87171; font-weight:bold;'>RAWAN ARA (Hindari HK)</span>"
 elif score >= 10: 
@@ -353,7 +361,7 @@ with col_h4:
 st.divider()
 
 # ==========================================
-# --- 2. CHART (FIXED: 1 VOLUME SAJA) ---
+# --- 2. CHART ---
 # ==========================================
 tradingview_html = f"""
 <div style="border-radius: 10px; border: 1px solid #374151; overflow: hidden; background: #111827; margin-bottom: 15px;">

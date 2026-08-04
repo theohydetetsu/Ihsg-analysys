@@ -24,37 +24,35 @@ hr {margin-top: 0.4rem; margin-bottom: 0.4rem; border-color: #374151;}
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', unsafe_allow_html=True)
 
 # ==========================================
-# --- PANEL KONTROL ---
+# --- PANEL KONTROL (CLEAN 3 KOLOM) ---
 # ==========================================
 st.markdown("### ⚙️ PANEL KONTROL (ULTIMATE QUANT SNIPER)")
 
-col_in1, col_in2, col_in3, col_in4 = st.columns(4)
+col_in1, col_in2, col_in3 = st.columns(3)
 with col_in1:
-    ticker_input = st.text_input("🔍 1. Kode Saham:", "BBCA").upper().strip()
+    ticker_input = st.text_input("🔍 1. Kode Saham (Ketik & Enter):", "BBCA").upper().strip()
 with col_in2:
-    manual_price_input = st.number_input("🎯 2. Harga Manual (Darurat):", min_value=0, value=0, step=1, help="Isi hanya jika YF web juga ngawur.")
+    status_bandar = st.selectbox("🕵️‍♂️ 2. Bandarmology (Manual):", ["Akumulasi (Net Buy)", "Netral / Sepi", "Distribusi (Net Sell)"])
 with col_in3:
-    status_bandar = st.selectbox("🕵️‍♂️ 3. Bandar:", ["Akumulasi (Net Buy)", "Netral / Sepi", "Distribusi (Net Sell)"])
-with col_in4:
-    status_bidoffer = st.selectbox("⚖️ 4. Bid & Offer:", ["Dominan BID (Demand Kuat)", "Berimbang (Normal)", "Dominan OFFER (Supply Kuat)"])
+    status_bidoffer = st.selectbox("⚖️ 3. Bid & Offer (Manual):", ["Dominan BID (Demand Kuat)", "Berimbang (Normal)", "Dominan OFFER (Supply Kuat)"])
 
 col_cf1, col_cf2, col_cf3 = st.columns(3)
 with col_cf1:
-    status_asing = st.selectbox("🦅 5. Asing (Foreign Flow):", ["Asing NET BUY (Masuk Besar)", "Asing Netral / Mixed", "Asing NET SELL (Keluar)"])
+    status_asing = st.selectbox("🦅 4. Jejak Dana Asing (Foreign Flow):", ["Asing NET BUY (Masuk Besar)", "Asing Netral / Mixed", "Asing NET SELL (Keluar)"])
 with col_cf2:
-    modal_input = st.number_input("💰 6. Modal Trading (Rp):", min_value=100000, value=10000000, step=1000000)
+    modal_input = st.number_input("💰 5. Modal Trading Anda (Rp):", min_value=100000, value=10000000, step=1000000)
 with col_cf3:
-    risiko_input = st.selectbox("🛡️ 7. Toleransi Risiko (Cutloss):", ["1% dari Modal (Sangat Konservatif)", "2% dari Modal (Standar Pro)", "3% dari Modal (Agresif)", "5% dari Modal (Sangat Agresif)"], index=1)
+    risiko_input = st.selectbox("🛡️ 6. Toleransi Risiko (Cutloss):", ["1% dari Modal (Sangat Konservatif)", "2% dari Modal (Standar Pro)", "3% dari Modal (Agresif)", "5% dari Modal (Sangat Agresif)"], index=1)
 
 ticker_yf = f"{ticker_input}.JK"
 ticker_tv = f"IDX:{ticker_input}"
 st.markdown("---")
 
 # ==========================================
-# --- MESIN KALKULASI DEWA V11 ---
+# --- MESIN KALKULASI DEWA V12 (AUTO-SYNC) ---
 # ==========================================
 @st.cache_data(ttl=60)
-def get_stock_data(ticker_symbol, manual_price=0):
+def get_stock_data(ticker_symbol):
     try:
         stock = yf.Ticker(ticker_symbol)
         info = stock.info
@@ -63,25 +61,16 @@ def get_stock_data(ticker_symbol, manual_price=0):
         
         if hist.empty or len(hist) < 60: return None
         
-        # LOGIKA V11: TARIK HARGA WEB FRONTEND DULU!
         api_live_price = info.get('currentPrice', info.get('regularMarketPrice', 0))
         api_prev_close = info.get('previousClose', 0)
-        
         hist_latest_price = hist['Close'].iloc[-1]
-        
-        if manual_price > 0:
-            latest_price = float(manual_price)
-            prev_price = hist['Close'].iloc[-1] if hist['Close'].iloc[-1] != latest_price else hist['Close'].iloc[-2]
-            change_pct = ((latest_price - prev_price) / prev_price) * 100
-            hist.loc[hist.index[-1], 'Close'] = latest_price
             
-        # V11 AUTO-SYNC: Kalau harga web beda sama history (history lemot)
-        elif api_live_price > 0 and api_live_price != hist_latest_price:
+        # AUTO-SYNC OTOMATIS DENGAN WEB FRONTEND
+        if api_live_price > 0 and api_live_price != hist_latest_price:
             latest_price = float(api_live_price)
             prev_price = float(api_prev_close) if api_prev_close > 0 else hist_latest_price
             change_pct = ((latest_price - prev_price) / prev_price) * 100
             
-            # Paksa update lilin (candle) terakhir di kalkulator AI
             hist.loc[hist.index[-1], 'Close'] = latest_price
             if latest_price > hist['High'].iloc[-1]: hist.loc[hist.index[-1], 'High'] = latest_price
             if latest_price < hist['Low'].iloc[-1]: hist.loc[hist.index[-1], 'Low'] = latest_price
@@ -226,7 +215,7 @@ def get_stock_data(ticker_symbol, manual_price=0):
     except:
         return None
 
-data = get_stock_data(ticker_yf, manual_price_input)
+data = get_stock_data(ticker_yf)
 if data is None:
     st.error(f"❌ Saham **{ticker_input}** tidak valid atau data kurang.")
     st.stop()
@@ -241,7 +230,6 @@ s_val = s_int(data['sup'])
 sh_val = s_int(data['swing_high'])
 f_val = s_int(data['fibo_618'])
 vw_val = s_int(data['vwap_val'])
-
 
 # ==========================================
 # --- PENILAIAN SKOR & PROBABILITAS ---
@@ -281,7 +269,6 @@ if max_lot < 1: max_lot = 0
 if score >= 9: entry_val = f"<span style='color:#4ade80; font-weight:bold;'>Rp{p_val} (HK)</span>"
 elif score >= 5: entry_val = f"<span style='color:#fbbf24; font-weight:bold;'>Rp{s_val} (Antre)</span>"
 else: entry_val = "<span style='color:#f87171; font-weight:bold;'>Wait & See</span>"
-
 
 # ==========================================
 # --- 1. HEADER DASHBOARD ---
@@ -408,7 +395,7 @@ box1 = f"""<div style='height: 180px; display: flex; flex-direction: column;'>
 <div style='display:flex; justify-content: space-between;'><span>EPS (QoQ):</span> <strong style='color:{data['eps_g_col']};'>{data['eps_g_str']}</strong></div>
 </div>
 <div style='margin-top: auto;'><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{data['stat_funda']}</strong></div>
-</div>""".replace('\n', '')
+</div>"""
 
 box2 = f"""<div style='height: 180px; display: flex; flex-direction: column;'>
 <div><span style='font-size: 0.95rem; font-weight: bold;'>🛡️ MONEY MANAGEMENT</span><br><hr style='margin: 4px 0; border-color:#374151;'>
@@ -417,7 +404,7 @@ box2 = f"""<div style='height: 180px; display: flex; flex-direction: column;'>
 <br>✔️ Maksimal Beli: <strong style='color:#4ade80;'>{max_lot} LOT</strong>
 </div>
 <div style='margin-top: auto;'><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{stat_mm}</strong></div>
-</div>""".replace('\n', '')
+</div>"""
 
 box3 = f"""<div style='height: 180px; display: flex; flex-direction: column;'>
 <div><span style='font-size: 0.95rem; font-weight: bold;'>📊 STATISTIC SAAT INI</span><br><hr style='margin: 4px 0; border-color:#374151;'>
@@ -427,7 +414,7 @@ box3 = f"""<div style='height: 180px; display: flex; flex-direction: column;'>
 <div style='display:flex; justify-content: space-between;'><span>CEO:</span> <strong style='color:#f3f4f6;'>{data['ceo'][:15]}</strong></div>
 </div>
 <div style='margin-top: auto;'><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{data['stat_stat']}</strong></div>
-</div>""".replace('\n', '')
+</div>"""
 
 box4 = f"""<div style='height: 180px; display: flex; flex-direction: column;'>
 <div><span style='font-size: 0.95rem; font-weight: bold;'>🦅 INSTITUTIONAL FLOW</span><br><hr style='margin: 4px 0; border-color:#374151;'>
@@ -436,7 +423,7 @@ box4 = f"""<div style='height: 180px; display: flex; flex-direction: column;'>
 ✔️ VWAP: <strong style='color:{vwap_color};'>{data['vwap_stat']}</strong>
 </div>
 <div style='margin-top: auto;'><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{stat_flow}</strong></div>
-</div>""".replace('\n', '')
+</div>"""
 
 box5 = f"""<div style='height: 180px; display: flex; flex-direction: column;'>
 <div><span style='font-size: 0.95rem; font-weight: bold;'>⏳ MULTI-TIMEFRAME MATRIX</span><br><hr style='margin: 4px 0; border-color:#374151;'>
@@ -445,7 +432,7 @@ box5 = f"""<div style='height: 180px; display: flex; flex-direction: column;'>
 <br>✔️ VPA: <strong style='color:{vpa_color};'>{data['vpa_stat']}</strong>
 </div>
 <div style='margin-top: auto;'><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{stat_mtf}</strong></div>
-</div>""".replace('\n', '')
+</div>"""
 
 box6 = f"""<div style='height: 180px; display: flex; flex-direction: column;'>
 <div><span style='font-size: 0.95rem; font-weight: bold;'>📈 TEKNIKAL & PRICE ACTION</span><br><hr style='margin: 4px 0; border-color:#374151;'>
@@ -454,7 +441,7 @@ box6 = f"""<div style='height: 180px; display: flex; flex-direction: column;'>
 📌 <span style='color:#9ca3af;'>RSI:</span> <strong>{data['rsi_val']:.1f} ({data['rsi_status']})</strong>
 </div>
 <div style='margin-top: auto;'><hr style='margin: 4px 0; border-color:#374151;'>Status: <strong>{stat_tech}</strong></div>
-</div>""".replace('\n', '')
+</div>"""
 
 col_b1, col_b2, col_b3 = st.columns(3)
 with col_b1:

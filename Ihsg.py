@@ -9,7 +9,7 @@ import streamlit.components.v1 as components
 # ==========================================
 # --- KONFIGURASI HALAMAN ---
 # ==========================================
-st.set_page_config(page_title="HOLY GRAIL V21 - God Tier", layout="wide")
+st.set_page_config(page_title="HOLY GRAIL V22 - Bagger Radar", layout="wide")
 
 st.markdown("""<style>
 .stApp, [data-testid="stAppViewContainer"] {background-color: #020617 !important;}
@@ -25,9 +25,9 @@ hr {margin-top: 0.4rem; margin-bottom: 0.4rem; border-color: #374151;}
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', unsafe_allow_html=True)
 
 # ==========================================
-# --- PANEL KONTROL V21 (CLEAN 4 KOLOM) ---
+# --- PANEL KONTROL V22 ---
 # ==========================================
-st.markdown("### ⚙️ PANEL KONTROL (ULTIMATE V21 - GOD TIER)")
+st.markdown("### ⚙️ PANEL KONTROL (ULTIMATE V22 - GOD TIER)")
 
 col_in1, col_in2, col_in3, col_in4 = st.columns(4)
 with col_in1:
@@ -63,7 +63,7 @@ def get_ihsg_status():
 ihsg_text, ihsg_color = get_ihsg_status()
 
 # ==========================================
-# --- MESIN KALKULASI DEWA V21 ---
+# --- MESIN KALKULASI DEWA V22 ---
 # ==========================================
 @st.cache_data(ttl=60)
 def get_stock_data(ticker_symbol):
@@ -282,13 +282,11 @@ with col_h2:
 
 with col_h3:
     st.markdown("<div style='text-align: right; margin-top: 15px;'><div style='color:#9ca3af; font-size:0.95rem; font-weight:bold;'>HARGA SAAT INI</div>", unsafe_allow_html=True)
-    # UKURAN FONT HARGA DIPERKECIL DISINI
     st.markdown(f"<div style='color:#f3f4f6; font-size: clamp(1.8rem, 3.5vw, 2.8rem); font-weight: 900; line-height: 1.1;'>Rp{p_val}</div>", unsafe_allow_html=True)
     st.markdown(f"<div style='color: {color}; font-size: 1.2rem; font-weight: bold;'>{arrow} {data['change']:.2f}%</div></div>", unsafe_allow_html=True)
 
 with col_h4:
     rr_bg = "linear-gradient(90deg, #1e3a8a, #3b82f6)" if rr_ratio >= 1.5 else ("linear-gradient(90deg, #991b1b, #ef4444)" if rr_ratio < 0.5 else "linear-gradient(90deg, #78350f, #d97706)")
-    # PERBAIKAN HTML AGAR TIDAK BOCOR MENJADI TEKS
     html_execution = f"""<div style='background: linear-gradient(145deg, #111827, #000000); border: 1px solid {accent_color}; padding: 15px; border-radius: 12px; box-shadow: {border_glow}; position: relative; overflow: hidden; margin-top: 8px;'>
 <div style='position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: {accent_color}; box-shadow: 0 0 10px {accent_color};'></div>
 <div style='color:#e5e7eb; font-size:0.8rem; font-weight:800; letter-spacing:1.5px; margin-bottom: 8px; text-align: center;'>FINAL EXECUTION</div>
@@ -360,12 +358,15 @@ tab_movers, tab_screener, tab_journal = st.tabs(["🔥 Top Movers", "🔎 Stock 
 
 with tab_movers:
     components.html("""<div class="tradingview-widget-container" style="height: 700px; width: 100%;"><div class="tradingview-widget-container__widget" style="height: 100%; width: 100%;"></div><script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-hotlists.js" async>{ "colorTheme": "dark", "dateRange": "12M", "exchange": "IDX", "showChart": false, "locale": "id", "width": "100%", "height": "700", "isTransparent": true }</script></div>""", height=700)
+
+# ==========================================
+# WIDGET SCREENER DIUBAH KE TOP GAINERS & TABEL SIMPEL (V22)
+# ==========================================
 with tab_screener:
-    components.html("""<div class="tradingview-widget-container" style="height: 700px; width: 100%;"><div class="tradingview-widget-container__widget" style="height: 100%; width: 100%;"></div><script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>{ "width": "100%", "height": "700", "defaultColumn": "overview", "defaultScreen": "general", "market": "indonesia", "showToolbar": true, "colorTheme": "dark", "locale": "id", "isTransparent": true }</script></div>""", height=700)
+    components.html("""<div class="tradingview-widget-container" style="height: 700px; width: 100%;"><div class="tradingview-widget-container__widget" style="height: 100%; width: 100%;"></div><script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>{ "width": "100%", "height": "700", "defaultColumn": "performance", "defaultScreen": "top_gainers", "market": "indonesia", "showToolbar": true, "colorTheme": "dark", "locale": "id", "isTransparent": true }</script></div>""", height=700)
 
 with tab_journal:
     st.markdown("#### 📥 Sinkronisasi Data Jurnal")
-    # PERBAIKAN FORMAT WAKTU (STRFTIME ERROR) DISINI
     export_data = {"Tanggal": now_wib.strftime("%d %B %Y"), "Ticker": ticker_input, "Harga Saat Ini": p_val, "Target Profit": r_val, "Trailing Stop": ts_val, "Skor AI": f"{score}/18", "Win Rate": win_rate.split(' ')[0], "Rekomendasi": "HK" if score >=10 else "Wait", "AI Bandar Flow": data['auto_bandar'], "Risk/Reward": f"1:{rr_ratio}", "Max Lot": max_lot}
     
     col_j1, col_j2 = st.columns(2)

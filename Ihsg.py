@@ -9,7 +9,7 @@ import streamlit.components.v1 as components
 # ==========================================
 # --- KONFIGURASI HALAMAN ---
 # ==========================================
-st.set_page_config(page_title="HOLY GRAIL V20 - God Tier", layout="wide")
+st.set_page_config(page_title="HOLY GRAIL V21 - God Tier", layout="wide")
 
 st.markdown("""<style>
 .stApp, [data-testid="stAppViewContainer"] {background-color: #020617 !important;}
@@ -25,23 +25,19 @@ hr {margin-top: 0.4rem; margin-bottom: 0.4rem; border-color: #374151;}
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', unsafe_allow_html=True)
 
 # ==========================================
-# --- PANEL KONTROL V20 (CLEAN AI) ---
+# --- PANEL KONTROL V21 (CLEAN 4 KOLOM) ---
 # ==========================================
-st.markdown("### ⚙️ PANEL KONTROL (ULTIMATE V20 - GOD TIER)")
+st.markdown("### ⚙️ PANEL KONTROL (ULTIMATE V21 - GOD TIER)")
 
-col_in1, col_in2, col_in3 = st.columns(3)
+col_in1, col_in2, col_in3, col_in4 = st.columns(4)
 with col_in1:
     ticker_input = st.text_input("🔍 1. Kode Saham:", "BBCA").upper().strip()
 with col_in2:
-    manual_price_input = st.number_input("🎯 2. Harga Live (Jika YF Delay):", min_value=0, value=0, step=1)
+    status_asing = st.selectbox("🦅 2. Asing Flow:", ["Asing NET BUY (Masuk Besar)", "Asing Netral / Mixed", "Asing NET SELL (Keluar)"])
 with col_in3:
-    status_asing = st.selectbox("🦅 3. Asing (Foreign Flow):", ["Asing NET BUY (Masuk Besar)", "Asing Netral / Mixed", "Asing NET SELL (Keluar)"])
-
-col_cf1, col_cf2 = st.columns(2)
-with col_cf1:
-    modal_input = st.number_input("💰 4. Modal Trading (Rp):", min_value=100000, value=10000000, step=1000000)
-with col_cf2:
-    risiko_input = st.selectbox("🛡️ 5. Toleransi Risiko (Cutloss):", ["1% dari Modal (Konservatif)", "2% dari Modal (Standar Pro)", "3% dari Modal (Agresif)", "5% dari Modal (Sangat Agresif)"], index=1)
+    modal_input = st.number_input("💰 3. Modal Trading (Rp):", min_value=100000, value=10000000, step=1000000)
+with col_in4:
+    risiko_input = st.selectbox("🛡️ 4. Toleransi Risiko:", ["1% dari Modal (Konservatif)", "2% dari Modal (Standar Pro)", "3% dari Modal (Agresif)", "5% dari Modal (Sangat Agresif)"], index=1)
 
 ticker_yf = f"{ticker_input}.JK"
 ticker_tv = f"IDX:{ticker_input}"
@@ -67,10 +63,10 @@ def get_ihsg_status():
 ihsg_text, ihsg_color = get_ihsg_status()
 
 # ==========================================
-# --- MESIN KALKULASI DEWA V20 (AUTO BANDAR & ATR) ---
+# --- MESIN KALKULASI DEWA V21 ---
 # ==========================================
 @st.cache_data(ttl=60)
-def get_stock_data(ticker_symbol, manual_price=0):
+def get_stock_data(ticker_symbol):
     try:
         stock = yf.Ticker(ticker_symbol)
         hist = stock.history(period="6mo")
@@ -96,8 +92,8 @@ def get_stock_data(ticker_symbol, manual_price=0):
         if api_prev_close <= 0 and len(hist) > 1: api_prev_close = hist['Close'].iloc[-2]
         
         latest_price = hist_latest_price
-        if manual_price > 0: latest_price = float(manual_price)
-        elif api_live_price > 0 and api_live_price != hist_latest_price: latest_price = float(api_live_price)
+        if api_live_price > 0 and api_live_price != hist_latest_price: 
+            latest_price = float(api_live_price)
             
         hist.loc[hist.index[-1], 'Close'] = latest_price
         if latest_price > hist['High'].iloc[-1]: hist.loc[hist.index[-1], 'High'] = latest_price
@@ -124,10 +120,10 @@ def get_stock_data(ticker_symbol, manual_price=0):
         cmf_latest = cmf.iloc[-1]
         
         if cmf_latest > 0.05 and obv_latest > obv_sma:
-            auto_bandar, bandar_score = "Akumulasi Kuat (AI Detect)", 3
+            auto_bandar, bandar_score = "Akumulasi Kuat (AI)", 3
             obv_score = 2
         elif cmf_latest < -0.05:
-            auto_bandar, bandar_score = "Distribusi Besar (AI Detect)", 0
+            auto_bandar, bandar_score = "Distribusi Besar (AI)", 0
             obv_score = 0
         else:
             auto_bandar, bandar_score = "Netral / Sepi", 1
@@ -140,10 +136,6 @@ def get_stock_data(ticker_symbol, manual_price=0):
         pe_str = f"{pe_raw:.2f}x" if pe_raw > 0 else "N/A"
         pbv_str = f"{pbv_raw:.2f}x" if pbv_raw > 0 else "N/A"
         roe_str = f"{roe_raw * 100:.1f}%" if roe_raw != 0 else "N/A"
-        
-        def get_color(val, threshold, mode="high_good"):
-            if val == 0 or val == "N/A": return "#9ca3af"
-            return "#4ade80" if (val > threshold if mode == "high_good" else val < threshold) else "#f87171"
 
         f_score = sum([pe_raw>0 and pe_raw<20, pbv_raw>0 and pbv_raw<2, roe_raw>0.1, npm_raw>0.05])
         stat_funda = "<span style='color:#4ade80;'>BAGUS</span>" if f_score >= 3 else ("<span style='color:#fbbf24;'>STABIL</span>" if f_score >= 1 else "<span style='color:#f87171;'>JELEK</span>")
@@ -190,7 +182,7 @@ def get_stock_data(ticker_symbol, manual_price=0):
         
         # 3. DYNAMIC TRAILING STOP
         trailing_stop = latest_price - (1.5 * atr_20)
-        if trailing_stop < sup_terdekat: trailing_stop = sup_terdekat # Jangan sampai TS lebih bawah dari Support kuat
+        if trailing_stop < sup_terdekat: trailing_stop = sup_terdekat
 
         if daily_range.rolling(5).mean().iloc[-1] < (atr_20 * 0.8) and latest_price > sma60: vcp_stat, vcp_score = "Terdeteksi (Breakout)", 1
         else: vcp_stat, vcp_score = "Bukan VCP", 0
@@ -211,7 +203,7 @@ def get_stock_data(ticker_symbol, manual_price=0):
         }
     except Exception as e: return None
 
-data = get_stock_data(ticker_yf, manual_price_input)
+data = get_stock_data(ticker_yf)
 if data is None:
     st.error(f"❌ Saham **{ticker_input}** tidak valid atau Yahoo Finance sedang membatasi akses (Rate Limit).")
     st.stop()
@@ -224,8 +216,8 @@ p_val, r_val, s_val, ts_val = int(data['price']), int(data['res']), int(data['su
 score = 0
 if data['trend'] == "Bullish": score += 2
 score += data['mtf_score']                          
-score += data['bandar_score'] # Auto Bandar (Max 3)
-score += data['obv_score']    # Auto OBV Flow (Max 2)
+score += data['bandar_score'] 
+score += data['obv_score']    
 if "NET BUY" in status_asing: score += 2            
 elif "Neutral" in status_asing: score += 1
 score += data['vwap_score']                         
@@ -248,12 +240,12 @@ reward = r_val - p_val
 rr_ratio = round(reward / risk_per_share, 1) if risk_per_share > 0 else 0
 
 # ----------------------------------------------------
-# 🛡️ ENGINE ANTI FOMO & DIVIDEND TRAP (V20)
+# 🛡️ ENGINE ANTI FOMO & DIVIDEND TRAP
 # ----------------------------------------------------
 div_html = f"<div style='color:#f87171; font-weight:900; font-size:0.8rem; text-align:center; animation: blinker 1.5s linear infinite;'>⚠️ AWAS DIVIDEND TRAP!</div><style>@keyframes blinker {{ 50% {{ opacity: 0; }} }}</style>" if data['div_warning'] else ""
 
 if data['rsi_val'] >= 85: 
-    entry_val, border_glow, accent_color = f"<span style='color:#f87171; font-weight:bold;'>⚠️ JANGAN HK! (RSI Pucuk)</span>", "0 0 15px rgba(248, 113, 113, 0.4)", "#f87171" 
+    entry_val, border_glow, accent_color = f"<span style='color:#f87171; font-weight:bold;'>⚠️ JANGAN HK! (Pucuk)</span>", "0 0 15px rgba(248, 113, 113, 0.4)", "#f87171" 
 elif rr_ratio < 0.5 and score >= 10:
     entry_val, border_glow, accent_color = f"<span style='color:#fbbf24; font-weight:bold;'>⚠️ ANTRE! (R:R Jelek)</span>", "0 0 15px rgba(251, 191, 36, 0.4)", "#fbbf24" 
 elif data['jarak_ara'] < 3.0: 
@@ -290,25 +282,26 @@ with col_h2:
 
 with col_h3:
     st.markdown("<div style='text-align: right; margin-top: 15px;'><div style='color:#9ca3af; font-size:0.95rem; font-weight:bold;'>HARGA SAAT INI</div>", unsafe_allow_html=True)
-    st.markdown(f"<div style='color:#f3f4f6; font-size: clamp(2.2rem, 4.5vw, 3.5rem); font-weight: 900; line-height: 1.1;'>Rp{p_val}</div>", unsafe_allow_html=True)
+    # UKURAN FONT HARGA DIPERKECIL DISINI
+    st.markdown(f"<div style='color:#f3f4f6; font-size: clamp(1.8rem, 3.5vw, 2.8rem); font-weight: 900; line-height: 1.1;'>Rp{p_val}</div>", unsafe_allow_html=True)
     st.markdown(f"<div style='color: {color}; font-size: 1.2rem; font-weight: bold;'>{arrow} {data['change']:.2f}%</div></div>", unsafe_allow_html=True)
 
 with col_h4:
     rr_bg = "linear-gradient(90deg, #1e3a8a, #3b82f6)" if rr_ratio >= 1.5 else ("linear-gradient(90deg, #991b1b, #ef4444)" if rr_ratio < 0.5 else "linear-gradient(90deg, #78350f, #d97706)")
-    st.markdown(f"""
-    <div style='background: linear-gradient(145deg, #111827, #000000); border: 1px solid {accent_color}; padding: 15px; border-radius: 12px; box-shadow: {border_glow}; position: relative; overflow: hidden; margin-top: 8px;'>
-        <div style='position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: {accent_color}; box-shadow: 0 0 10px {accent_color};'></div>
-        <div style='color:#e5e7eb; font-size:0.8rem; font-weight:800; letter-spacing:1.5px; margin-bottom: 8px; text-align: center;'>FINAL EXECUTION</div>
-        {div_html}
-        <div style='display:flex; flex-direction: column; gap: 6px; margin-top:8px;'>
-            <div style='display:flex; justify-content: space-between; font-size: 0.85rem; border-bottom: 1px dashed #374151; padding-bottom: 4px;'><span style='color:#9ca3af;'>Entry Point</span> <span style='text-align: right;'>{entry_val}</span></div>
-            <div style='display:flex; justify-content: space-between; font-size: 0.85rem; border-bottom: 1px dashed #374151; padding-bottom: 4px;'><span style='color:#9ca3af;'>Take Profit</span> <span style='color:#4ade80; font-weight:900;'>Rp{r_val}</span></div>
-            <div style='display:flex; justify-content: space-between; font-size: 0.85rem; border-bottom: 1px dashed #374151; padding-bottom: 4px;'><span style='color:#9ca3af;'>Stop Loss (Support)</span> <span style='color:#f87171; font-weight:900;'>Rp{s_val}</span></div>
-            <div style='display:flex; justify-content: space-between; font-size: 0.85rem;'><span style='color:#9ca3af;'>Trailing Stop (ATR)</span> <span style='color:#fbbf24; font-weight:900;'>Rp{ts_val}</span></div>
-        </div>
-        <div style='background: {rr_bg}; color:white; padding:4px; border-radius:6px; text-align:center; font-weight:900; font-size:0.8rem; margin-top: 8px;'>⚖️ R:R = 1 : {rr_ratio}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    # PERBAIKAN HTML AGAR TIDAK BOCOR MENJADI TEKS
+    html_execution = f"""<div style='background: linear-gradient(145deg, #111827, #000000); border: 1px solid {accent_color}; padding: 15px; border-radius: 12px; box-shadow: {border_glow}; position: relative; overflow: hidden; margin-top: 8px;'>
+<div style='position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: {accent_color}; box-shadow: 0 0 10px {accent_color};'></div>
+<div style='color:#e5e7eb; font-size:0.8rem; font-weight:800; letter-spacing:1.5px; margin-bottom: 8px; text-align: center;'>FINAL EXECUTION</div>
+{div_html}
+<div style='display:flex; flex-direction: column; gap: 6px; margin-top:8px;'>
+<div style='display:flex; justify-content: space-between; font-size: 0.85rem; border-bottom: 1px dashed #374151; padding-bottom: 4px;'><span style='color:#9ca3af;'>Entry Point</span> <span style='text-align: right;'>{entry_val}</span></div>
+<div style='display:flex; justify-content: space-between; font-size: 0.85rem; border-bottom: 1px dashed #374151; padding-bottom: 4px;'><span style='color:#9ca3af;'>Take Profit</span> <span style='color:#4ade80; font-weight:900;'>Rp{r_val}</span></div>
+<div style='display:flex; justify-content: space-between; font-size: 0.85rem; border-bottom: 1px dashed #374151; padding-bottom: 4px;'><span style='color:#9ca3af;'>Stop Loss (Support)</span> <span style='color:#f87171; font-weight:900;'>Rp{s_val}</span></div>
+<div style='display:flex; justify-content: space-between; font-size: 0.85rem;'><span style='color:#9ca3af;'>Trailing Stop (ATR)</span> <span style='color:#fbbf24; font-weight:900;'>Rp{ts_val}</span></div>
+</div>
+<div style='background: {rr_bg}; color:white; padding:4px; border-radius:6px; text-align:center; font-weight:900; font-size:0.8rem; margin-top: 8px;'>⚖️ R:R = 1 : {rr_ratio}</div>
+</div>"""
+    st.markdown(html_execution, unsafe_allow_html=True)
 
 st.divider()
 
@@ -372,7 +365,8 @@ with tab_screener:
 
 with tab_journal:
     st.markdown("#### 📥 Sinkronisasi Data Jurnal")
-    export_data = {"Tanggal": today_time_str.strftime("%d %B %Y"), "Ticker": ticker_input, "Harga Saat Ini": p_val, "Target Profit": r_val, "Trailing Stop": ts_val, "Skor AI": f"{score}/18", "Win Rate": win_rate.split(' ')[0], "Rekomendasi": "HK" if score >=10 else "Wait", "AI Bandar Flow": data['auto_bandar'], "Risk/Reward": f"1:{rr_ratio}", "Max Lot": max_lot}
+    # PERBAIKAN FORMAT WAKTU (STRFTIME ERROR) DISINI
+    export_data = {"Tanggal": now_wib.strftime("%d %B %Y"), "Ticker": ticker_input, "Harga Saat Ini": p_val, "Target Profit": r_val, "Trailing Stop": ts_val, "Skor AI": f"{score}/18", "Win Rate": win_rate.split(' ')[0], "Rekomendasi": "HK" if score >=10 else "Wait", "AI Bandar Flow": data['auto_bandar'], "Risk/Reward": f"1:{rr_ratio}", "Max Lot": max_lot}
     
     col_j1, col_j2 = st.columns(2)
     with col_j1:

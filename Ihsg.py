@@ -9,7 +9,7 @@ import streamlit.components.v1 as components
 # ==========================================
 # --- KONFIGURASI HALAMAN ---
 # ==========================================
-st.set_page_config(page_title="HOLY GRAIL V22 - Bagger Radar", layout="wide")
+st.set_page_config(page_title="HOLY GRAIL V23 - Bagger Cheat Sheet", layout="wide")
 
 st.markdown("""<style>
 .stApp, [data-testid="stAppViewContainer"] {background-color: #020617 !important;}
@@ -25,9 +25,9 @@ hr {margin-top: 0.4rem; margin-bottom: 0.4rem; border-color: #374151;}
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', unsafe_allow_html=True)
 
 # ==========================================
-# --- PANEL KONTROL V22 ---
+# --- PANEL KONTROL V23 ---
 # ==========================================
-st.markdown("### ⚙️ PANEL KONTROL (ULTIMATE V22 - GOD TIER)")
+st.markdown("### ⚙️ PANEL KONTROL (ULTIMATE V23 - GOD TIER)")
 
 col_in1, col_in2, col_in3, col_in4 = st.columns(4)
 with col_in1:
@@ -63,7 +63,7 @@ def get_ihsg_status():
 ihsg_text, ihsg_color = get_ihsg_status()
 
 # ==========================================
-# --- MESIN KALKULASI DEWA V22 ---
+# --- MESIN KALKULASI DEWA V23 ---
 # ==========================================
 @st.cache_data(ttl=60)
 def get_stock_data(ticker_symbol):
@@ -77,15 +77,13 @@ def get_stock_data(ticker_symbol):
         try: info = stock.info
         except: info = {}
         
-        # 1. DIVIDEND TRAP RADAR
         div_warning = False
         try:
             divs = stock.dividends
             if not divs.empty:
                 last_div_date = divs.index[-1]
                 now_tz = datetime.datetime.now(last_div_date.tzinfo) if last_div_date.tzinfo else datetime.datetime.now()
-                if abs((now_tz - last_div_date).days) <= 14:
-                    div_warning = True
+                if abs((now_tz - last_div_date).days) <= 14: div_warning = True
         except: pass
         
         api_live_price, api_prev_close = info.get('currentPrice', info.get('regularMarketPrice', 0)), info.get('previousClose', 0)
@@ -109,7 +107,6 @@ def get_stock_data(ticker_symbol):
 
         close, low, high, vol = hist['Close'], hist['Low'], hist['High'], hist['Volume']
         
-        # 2. AUTO BANDAR DETECTOR (OBV & CMF)
         obv = (np.sign(close.diff()) * vol).fillna(0).cumsum()
         obv_sma = obv.rolling(20).mean().iloc[-1]
         obv_latest = obv.iloc[-1]
@@ -120,16 +117,12 @@ def get_stock_data(ticker_symbol):
         cmf_latest = cmf.iloc[-1]
         
         if cmf_latest > 0.05 and obv_latest > obv_sma:
-            auto_bandar, bandar_score = "Akumulasi Kuat (AI)", 3
-            obv_score = 2
+            auto_bandar, bandar_score, obv_score = "Akumulasi Kuat (AI)", 3, 2
         elif cmf_latest < -0.05:
-            auto_bandar, bandar_score = "Distribusi Besar (AI)", 0
-            obv_score = 0
+            auto_bandar, bandar_score, obv_score = "Distribusi Besar (AI)", 0, 0
         else:
-            auto_bandar, bandar_score = "Netral / Sepi", 1
-            obv_score = 1
+            auto_bandar, bandar_score, obv_score = "Netral / Sepi", 1, 1
 
-        # Fundamental
         def safe_num(val): return val if val is not None else 0
         pe_raw, pbv_raw = safe_num(info.get('trailingPE')), safe_num(info.get('priceToBook'))
         roe_raw, npm_raw = safe_num(info.get('returnOnEquity')), safe_num(info.get('profitMargins'))
@@ -140,7 +133,6 @@ def get_stock_data(ticker_symbol):
         f_score = sum([pe_raw>0 and pe_raw<20, pbv_raw>0 and pbv_raw<2, roe_raw>0.1, npm_raw>0.05])
         stat_funda = "<span style='color:#4ade80;'>BAGUS</span>" if f_score >= 3 else ("<span style='color:#fbbf24;'>STABIL</span>" if f_score >= 1 else "<span style='color:#f87171;'>JELEK</span>")
 
-        # Teknikal
         sma20, sma60 = close.rolling(20).mean().iloc[-1], close.rolling(60).mean().iloc[-1]
         ema21 = close.ewm(span=21, adjust=False).mean().iloc[-1]
         ema_cross = trend_status = "Bullish" if latest_price > ema21 else "Bearish"
@@ -179,8 +171,6 @@ def get_stock_data(ticker_symbol):
 
         daily_range = high - low
         atr_20 = daily_range.rolling(20).mean().iloc[-1]
-        
-        # 3. DYNAMIC TRAILING STOP
         trailing_stop = latest_price - (1.5 * atr_20)
         if trailing_stop < sup_terdekat: trailing_stop = sup_terdekat
 
@@ -239,9 +229,6 @@ if max_lot < 1: max_lot = 0
 reward = r_val - p_val
 rr_ratio = round(reward / risk_per_share, 1) if risk_per_share > 0 else 0
 
-# ----------------------------------------------------
-# 🛡️ ENGINE ANTI FOMO & DIVIDEND TRAP
-# ----------------------------------------------------
 div_html = f"<div style='color:#f87171; font-weight:900; font-size:0.8rem; text-align:center; animation: blinker 1.5s linear infinite;'>⚠️ AWAS DIVIDEND TRAP!</div><style>@keyframes blinker {{ 50% {{ opacity: 0; }} }}</style>" if data['div_warning'] else ""
 
 if data['rsi_val'] >= 85: 
@@ -359,10 +346,28 @@ tab_movers, tab_screener, tab_journal = st.tabs(["🔥 Top Movers", "🔎 Stock 
 with tab_movers:
     components.html("""<div class="tradingview-widget-container" style="height: 700px; width: 100%;"><div class="tradingview-widget-container__widget" style="height: 100%; width: 100%;"></div><script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-hotlists.js" async>{ "colorTheme": "dark", "dateRange": "12M", "exchange": "IDX", "showChart": false, "locale": "id", "width": "100%", "height": "700", "isTransparent": true }</script></div>""", height=700)
 
-# ==========================================
-# WIDGET SCREENER DIUBAH KE TOP GAINERS & TABEL SIMPEL (V22)
-# ==========================================
 with tab_screener:
+    # --- PANEL SOP BAGGER (CHEAT SHEET V23) ---
+    st.markdown("""
+    <div style='background: linear-gradient(90deg, #1f2937, #111827); border-left: 4px solid #fbbf24; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.5);'>
+        <div style='color: #fbbf24; font-weight: 900; font-size: 1rem; margin-bottom: 8px;'>🎯 SOP FILTER BAGGER (KLIK IKON CORONG DI TABEL BAWAH)</div>
+        <div style='display: flex; flex-wrap: wrap; gap: 15px;'>
+            <div style='background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 6px; border: 1px solid #374151;'>
+                <span style='color: #9ca3af; font-size: 0.8rem;'>1. Kapitalisasi Pasar:</span><br><strong style='color: #f3f4f6;'>Di bawah Rp 5 Triliun</strong>
+            </div>
+            <div style='background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 6px; border: 1px solid #374151;'>
+                <span style='color: #9ca3af; font-size: 0.8rem;'>2. Relative Volume:</span><br><strong style='color: #4ade80;'>Di atas 1.5</strong>
+            </div>
+            <div style='background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 6px; border: 1px solid #374151;'>
+                <span style='color: #9ca3af; font-size: 0.8rem;'>3. Perubahan 1 Minggu:</span><br><strong style='color: #4ade80;'>Lebih dari +5%</strong>
+            </div>
+            <div style='background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 6px; border: 1px solid #374151;'>
+                <span style='color: #9ca3af; font-size: 0.8rem;'>4. RSI (14):</span><br><strong style='color: #f3f4f6;'>Di Bawah 65 (Jangan Pucuk)</strong>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
     components.html("""<div class="tradingview-widget-container" style="height: 700px; width: 100%;"><div class="tradingview-widget-container__widget" style="height: 100%; width: 100%;"></div><script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>{ "width": "100%", "height": "700", "defaultColumn": "performance", "defaultScreen": "top_gainers", "market": "indonesia", "showToolbar": true, "colorTheme": "dark", "locale": "id", "isTransparent": true }</script></div>""", height=700)
 
 with tab_journal:

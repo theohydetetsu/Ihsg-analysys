@@ -9,7 +9,7 @@ import streamlit.components.v1 as components
 # ==========================================
 # --- KONFIGURASI HALAMAN ---
 # ==========================================
-st.set_page_config(page_title="HOLY GRAIL V27 - Simple & Overpowered", layout="wide")
+st.set_page_config(page_title="HOLY GRAIL V27.1 - Anti Crash Edition", layout="wide")
 
 st.markdown("""<style>
 .stApp, [data-testid="stAppViewContainer"] {background-color: #020617 !important;}
@@ -25,9 +25,9 @@ hr {margin-top: 0.4rem; margin-bottom: 0.4rem; border-color: #374151;}
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', unsafe_allow_html=True)
 
 # ==========================================
-# --- PANEL KONTROL V27 ---
+# --- PANEL KONTROL V27.1 ---
 # ==========================================
-st.markdown("### ⚙️ PANEL KONTROL (V27 - SIMPLE & OVERPOWERED)")
+st.markdown("### ⚙️ PANEL KONTROL (V27.1 - 3 KOTAK OVERPOWER)")
 
 col_in1, col_in2, col_in3, col_in4 = st.columns(4)
 with col_in1:
@@ -43,7 +43,6 @@ ticker_yf = f"{ticker_input}.JK"
 ticker_tv = f"IDX:{ticker_input}"
 st.markdown("---")
 
-# --- PEMBACAAN ASING FLOW ---
 if "NET BUY" in status_asing: asing_label = "<span style='color:#4ade80;'>NET BUY 🟢</span>"
 elif "NET SELL" in status_asing: asing_label = "<span style='color:#f87171;'>NET SELL 🔴</span>"
 else: asing_label = "<span style='color:#fbbf24;'>MIXED 🟡</span>"
@@ -69,8 +68,13 @@ def get_ihsg_status():
 ihsg_text, ihsg_color = get_ihsg_status()
 
 # ==========================================
-# --- MESIN KALKULASI DEWA V27 ---
+# --- MESIN KALKULASI DEWA V27.1 (ANTI CRASH) ---
 # ==========================================
+def safe_num(val):
+    """Fungsi Anti-Crash: Memaksa data apapun (termasuk None) menjadi angka aman."""
+    try: return float(val) if val is not None else 0.0
+    except: return 0.0
+
 @st.cache_data(ttl=60)
 def get_stock_data(ticker_symbol):
     try:
@@ -78,28 +82,34 @@ def get_stock_data(ticker_symbol):
         hist = stock.history(period="1y") 
         if hist.empty or len(hist) < 60: return None
         
-        hist_6m = hist.tail(130)
+        # FIX PANDAS WARNING: Gunakan .copy() agar tidak error
+        hist_6m = hist.tail(130).copy()
         hist_latest_price = hist['Close'].iloc[-1]
         try: info = stock.info
         except: info = {}
         
+        # DIVIDEND TRAP PROTECTOR (Anti Error Zona Waktu)
         div_warning = False
         try:
             divs = stock.dividends
             if not divs.empty:
-                last_div_date = divs.index[-1]
-                now_tz = datetime.datetime.now(last_div_date.tzinfo) if last_div_date.tzinfo else datetime.datetime.now()
-                if abs((now_tz - last_div_date).days) <= 14: div_warning = True
+                last_div_naive = divs.index[-1].tz_localize(None)
+                now_naive = datetime.datetime.utcnow()
+                if abs((now_naive - last_div_naive).days) <= 14: div_warning = True
         except: pass
         
-        api_live_price, api_prev_close = info.get('currentPrice', info.get('regularMarketPrice', 0)), info.get('previousClose', 0)
-        if api_prev_close <= 0 and len(hist) > 1: api_prev_close = hist['Close'].iloc[-2]
+        # AMBIL HARGA (ANTI NONE TYPE ERROR)
+        api_live_price = safe_num(info.get('currentPrice') or info.get('regularMarketPrice'))
+        api_prev_close = safe_num(info.get('previousClose'))
         
-        latest_price = float(api_live_price) if api_live_price > 0 and api_live_price != hist_latest_price else hist_latest_price
+        if api_prev_close <= 0 and len(hist) > 1: api_prev_close = hist['Close'].iloc[-2]
+        if api_prev_close <= 0: api_prev_close = hist_latest_price
+        
+        latest_price = api_live_price if api_live_price > 0 and api_live_price != hist_latest_price else hist_latest_price
         hist_6m.loc[hist_6m.index[-1], 'Close'] = latest_price
         
         if latest_price <= 0: latest_price = 1 
-        change_pct = ((latest_price - float(api_prev_close)) / float(api_prev_close)) * 100
+        change_pct = ((latest_price - api_prev_close) / api_prev_close) * 100
         company_name = info.get('longName', f"PT {ticker_symbol.replace('.JK', '')} Tbk")
         
         limit_pct = 0.35 if api_prev_close < 200 else (0.25 if 200 <= api_prev_close <= 5000 else 0.20)
@@ -117,19 +127,13 @@ def get_stock_data(ticker_symbol):
         cmf = (mfm * vol).rolling(20).sum() / vol.rolling(20).sum()
         cmf_latest = cmf.iloc[-1]
         
-        if cmf_latest > 0.05 and obv_latest > obv_sma:
-            auto_bandar, bandar_score = "Akumulasi Kuat (AI)", 3
-            bandar_color = "#4ade80"
-        elif cmf_latest < -0.05:
-            auto_bandar, bandar_score = "Distribusi Besar", 0
-            bandar_color = "#f87171"
-        else:
-            auto_bandar, bandar_score = "Netral / Sepi", 1
-            bandar_color = "#fbbf24"
+        if cmf_latest > 0.05 and obv_latest > obv_sma: auto_bandar, bandar_score, bandar_color = "Akumulasi Kuat (AI)", 3, "#4ade80"
+        elif cmf_latest < -0.05: auto_bandar, bandar_score, bandar_color = "Distribusi Besar", 0, "#f87171"
+        else: auto_bandar, bandar_score, bandar_color = "Netral / Sepi", 1, "#fbbf24"
 
         # FUNDAMENTAL
-        def safe_num(val): return val if val is not None else 0
-        pe_raw, pbv_raw = safe_num(info.get('trailingPE')), safe_num(info.get('priceToBook'))
+        pe_raw = safe_num(info.get('trailingPE'))
+        pbv_raw = safe_num(info.get('priceToBook'))
         roe_raw = safe_num(info.get('returnOnEquity'))
         
         pe_color = "#4ade80" if 0 < pe_raw <= 15 else ("#fbbf24" if 15 < pe_raw <= 25 else ("#f87171" if pe_raw > 25 else "#9ca3af"))
@@ -140,8 +144,7 @@ def get_stock_data(ticker_symbol):
         pbv_str = f"<strong style='color:{pbv_color};'>{pbv_raw:.2f}x</strong>" if pbv_raw > 0 else "<strong style='color:#9ca3af;'>N/A</strong>"
         roe_str = f"<strong style='color:{roe_color};'>{roe_raw * 100:.1f}%</strong>" if roe_raw != 0 else "<strong style='color:#9ca3af;'>N/A</strong>"
 
-        if pe_raw == 0 and pbv_raw == 0:
-            stat_funda = "<span style='color:#fbbf24;'>MURNI TEKNIKAL / GORENGAN</span>"
+        if pe_raw == 0 and pbv_raw == 0: stat_funda = "<span style='color:#fbbf24;'>MURNI TEKNIKAL / GORENGAN</span>"
         else:
             f_score = sum([pe_raw>0 and pe_raw<25, pbv_raw>0 and pbv_raw<4, roe_raw>0.05])
             stat_funda = "<span style='color:#4ade80;'>SEHAT / LAYAK INVEST</span>" if f_score >= 2 else "<span style='color:#f87171;'>BERISIKO / MAHAL</span>"
@@ -174,6 +177,9 @@ def get_stock_data(ticker_symbol):
         if latest_price < sup_terdekat: sup_terdekat = latest_price * 0.95
         
         swing_high, swing_low = hist_6m['High'].tail(60).max(), hist_6m['Low'].tail(60).min()
+        if pd.isna(swing_high): swing_high = latest_price
+        if pd.isna(swing_low): swing_low = latest_price
+        
         diff = swing_high - swing_low
         fibo_382, fibo_500, fibo_618 = swing_high - (0.382 * diff), swing_high - (0.500 * diff), swing_high - (0.618 * diff)
         
@@ -191,8 +197,8 @@ def get_stock_data(ticker_symbol):
         if trailing_stop < sup_terdekat: trailing_stop = sup_terdekat
         
         # STATUS AKHIR TEKNIKAL & BANDAR
-        if data['rsi_val'] >= 70: stat_tech = "<span style='color:#f87171;'>AWAS PUCUK (Rawan Guyur)</span>"
-        elif data['rsi_val'] <= 30: stat_tech = "<span style='color:#4ade80;'>OVERSOLD (Area Bawah)</span>"
+        if rsi_val >= 70: stat_tech = "<span style='color:#f87171;'>AWAS PUCUK (Rawan Guyur)</span>"
+        elif rsi_val <= 30: stat_tech = "<span style='color:#4ade80;'>OVERSOLD (Area Bawah)</span>"
         elif bb_score == 2: stat_tech = "<span style='color:#4ade80;'>TREN BREAKOUT</span>"
         else: stat_tech = "<span style='color:#fbbf24;'>MOMENTUM WAJAR</span>"
         
@@ -203,15 +209,19 @@ def get_stock_data(ticker_symbol):
             'fibo_stat': fibo_stat, 'fibo_score': fibo_score, 'trend': mtf_status, 'trend_col': trend_col, 'rsi_val': rsi_val, 'rsi_color': rsi_color,
             'vpa_stat': vpa_stat, 'vpa_score': vpa_score, 'bb_stat': bb_stat, 'bb_score': bb_score, 'mtf_score': mtf_score, 
             'pe_str': pe_str, 'pbv_str': pbv_str, 'roe_str': roe_str, 'stat_funda': stat_funda, 
-            'stat_tech': stat_tech, 'stat_flow': stat_flow, 'mc_str': f"{info.get('marketCap', 0) / 1e12:.2f} T", 'ara_price': ara_price, 'arb_price': arb_price, 
+            'stat_tech': stat_tech, 'stat_flow': stat_flow, 'mc_str': f"{safe_num(info.get('marketCap')) / 1e12:.2f} T", 'ara_price': ara_price, 'arb_price': arb_price, 
             'auto_bandar': auto_bandar, 'bandar_color': bandar_color, 'bandar_score': bandar_score, 'div_warning': div_warning, 'rentang_52': rentang_52,
             'fibo_100': swing_high, 'fibo_0': swing_low, 'fibo_618': fibo_618, 'fibo_500': fibo_500, 'fibo_382': fibo_382
         }
-    except Exception as e: return None
+    except Exception as e: 
+        return {"error": str(e)}
 
 data = get_stock_data(ticker_yf)
 if data is None:
-    st.error(f"❌ Saham **{ticker_input}** tidak valid.")
+    st.error(f"❌ Saham **{ticker_input}** tidak valid atau data kosong dari server.")
+    st.stop()
+elif isinstance(data, dict) and "error" in data:
+    st.error(f"❌ Terjadi kesalahan pembacaan data pada saham {ticker_input}: {data['error']}")
     st.stop()
 
 p_val, r_val, s_val, ts_val = int(data['price']), int(data['res']), int(data['sup']), int(data['ts'])

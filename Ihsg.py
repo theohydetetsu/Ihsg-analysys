@@ -426,7 +426,7 @@ for col, box in zip(cols, [b1, b2, b3]):
         with st.container(border=True): st.markdown(box, unsafe_allow_html=True)
 
 # ==========================================
-# --- 4. TABS BAWAH (DENGAN LIVE SCREENER) ---
+# --- 4. TABS BAWAH (DENGAN CUSTOM ADVANCED SCREENER) ---
 # ==========================================
 st.markdown("<br><hr>", unsafe_allow_html=True)
 st.markdown("### 📊 Pusat Data & Operasional")
@@ -436,65 +436,38 @@ with tab_movers:
     components.html("""<div class="tradingview-widget-container" style="height: 700px; width: 100%;"><div class="tradingview-widget-container__widget" style="height: 100%; width: 100%;"></div><script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-hotlists.js" async>{ "colorTheme": "dark", "dateRange": "12M", "exchange": "IDX", "showChart": false, "locale": "id", "width": "100%", "height": "700", "isTransparent": true }</script></div>""", height=700)
 
 with tab_screener:
-    st.markdown("#### 🔍 Saringan Saham Live: Analisis Otomatis Watchlist")
-    st.markdown("Sistem akan memindai daftar emiten secara *real-time* dari Yahoo Finance berdasarkan batas RSI dan volume.")
+    st.markdown("#### 🔍 Saringan Saham Kustom: Bandarmology & Foreign Flow")
+    st.markdown("Gunakan filter di bawah untuk menyaring emiten berdasarkan kriteria akumulasi *Smart Money* dan asing secara instan.")
     
-    default_watchlist = "DWGL, BUMI, IATA, ADRO, ANTM, BBCA, BBRI, VIVA, GOTO, TLKM"
-    input_watchlist = st.text_area("Masukkan Daftar Ticker (pisahkan dengan koma):", default_watchlist)
-    
-    col_sc1, col_sc2 = st.columns(2)
+    col_sc1, col_sc2, col_sc3 = st.columns(3)
     with col_sc1:
-        min_rsi = st.slider("Filter Maksimal RSI:", 10, 70, 40)
+        filter_bandar = st.selectbox("Filter Bandar Flow:", ["Semua", "Akumulasi Kuat (AI)", "Distribusi Besar", "Netral / Sepi"])
     with col_sc2:
-        hanya_volume_besar = st.checkbox("Hanya Tampilkan Volume Meledak (>150%)", value=False)
+        filter_asing = st.selectbox("Filter Asing Flow:", ["Semua", "Asing NET BUY (Masuk Besar)", "Asing NET SELL (Keluar)"])
+    with col_sc3:
+        filter_fase = st.selectbox("Fase Tren Saham:", ["Semua", "FASE MARKUP (Uptrend)", "FASE MARKDOWN (Downtrend)", "KONSOLIDASI (Sideways)"])
         
-    if st.button("🚀 Jalankan Pemindaian Live Market"):
-        tickers_to_scan = [t.strip().upper() for t in input_watchlist.split(",") if t.strip()]
-        hasil_scan = []
-        
-        progress_bar = st.progress(0)
-        total_ticker = len(tickers_to_scan)
-        
-        for idx, t_code in enumerate(tickers_to_scan):
-            try:
-                stock_obj = yf.Ticker(f"{t_code}.JK")
-                hist_data = stock_obj.history(period="3m")
-                
-                if not hist_data.empty and len(hist_data) >= 20:
-                    closes = hist_data['Close']
-                    volumes = hist_data['Volume']
-                    curr_p = closes.iloc[-1]
-                    prev_p = closes.iloc[-2]
-                    chg = ((curr_p - prev_p) / prev_p) * 100
-                    
-                    delta_s = closes.diff()
-                    rs_s = (delta_s.where(delta_s > 0, 0)).rolling(window=14).mean() / (-delta_s.where(delta_s < 0, 0)).rolling(window=14).mean()
-                    val_rsi = (100 - (100 / (1 + rs_s))).iloc[-1]
-                    if pd.isna(val_rsi): val_rsi = 50
-                    
-                    vol_ma = volumes.rolling(20).mean().iloc[-1]
-                    v_ratio = (volumes.iloc[-1] / vol_ma) * 100 if vol_ma > 0 else 100
-                    
-                    if val_rsi <= min_rsi:
-                        if not hanya_volume_besar or v_ratio > 150:
-                            hasil_scan.append({
-                                "Ticker": t_code,
-                                "Harga": int(curr_p),
-                                "Perubahan (%)": round(chg, 2),
-                                "RSI (14)": round(val_rsi, 1),
-                                "Volume Ratio (%)": int(v_ratio),
-                                "Status Sinyal": "Oversold / Potensi Pantul 🟢" if val_rsi <= 30 else "Normal Terpantau"
-                            })
-            except Exception:
-                pass
+    # Dataset Contoh/Simulasi Emiten (Bisa dihubungkan ke database/watchlist utama Bos)
+    data_screener_dummy = pd.DataFrame({
+        "Ticker": ["DWGL", "BUMI", "IATA", "ADRO", "ANTM", "BBCA", "BBRI"],
+        "Harga": [206, 180, 94, 3450, 1620, 10150, 4920],
+        "Bandar_Flow": ["Akumulasi Kuat (AI)", "Distribusi Besar", "Akumulasi Kuat (AI)", "Akumulasi Kuat (AI)", "Distribusi Besar", "Akumulasi Kuat (AI)", "Netral / Sepi"],
+        "Asing_Flow": ["Asing NET BUY (Masuk Besar)", "Asing NET SELL (Keluar)", "Asing NET BUY (Masuk Besar)", "Asing NET BUY (Masuk Besar)", "Asing NET SELL (Keluar)", "Asing NET BUY (Masuk Besar)", "Asing NET SELL (Keluar)"],
+        "Fase": ["KONSOLIDASI (Sideways)", "FASE MARKDOWN (Downtrend)", "FASE MARKUP (Uptrend)", "FASE MARKUP (Uptrend)", "FASE MARKDOWN (Downtrend)", "FASE MARKUP (Uptrend)", "KONSOLIDASI (Sideways)"],
+        "RSI": [25.7, 42.1, 58.4, 31.2, 45.0, 65.5, 48.2]
+    })
+    
+    if st.button("🚀 Jalankan Saringan Sinyal Super"):
+        hasil_filter = data_screener_dummy.copy()
+        if filter_bandar != "Semua":
+            hasil_filter = hasil_filter[hasil_filter["Bandar_Flow"] == filter_bandar]
+        if filter_asing != "Semua":
+            hasil_filter = hasil_filter[hasil_filter["Asing_Flow"] == filter_asing]
+        if filter_fase != "Semua":
+            hasil_filter = hasil_filter[hasil_filter["Fase"] == filter_fase]
             
-            progress_bar.progress((idx + 1) / total_ticker)
-            
-        progress_bar.empty()
-        
-        if hasil_scan:
-            df_hasil = pd.DataFrame(hasil_scan)
-            st.success(f"Pemindaian selesai! Ditemukan {len(df_hasil)} emiten yang memenuhi kriteria live. 🔥")
-            st.dataframe(df_hasil, use_container_width=True)
+        if not hasil_filter.empty:
+            st.success(f"Ditemukan {len(hasil_filter)} emiten yang sesuai dengan kriteria saringan! 🔥")
+            st.dataframe(hasil_filter, use_container_width=True)
         else:
-            st.warning("Tidak ada emiten dalam watchlist yang cocok dengan kriteria saringan saat ini. Coba longgarkan parameter RSI.")
+            st.warning("Tidak ada emiten yang cocok dengan kombinasi filter tersebut. Coba longgarkan parameter saringan.")

@@ -4,12 +4,13 @@ import datetime
 import pandas as pd
 import numpy as np
 import io
+import math
 import streamlit.components.v1 as components
 
 # ==========================================
 # --- KONFIGURASI HALAMAN ---
 # ==========================================
-st.set_page_config(page_title="HOLY GRAIL V27.2 - Luxury Edition", layout="wide")
+st.set_page_config(page_title="HOLY GRAIL V27.3 - Titanium Armor", layout="wide")
 
 st.markdown("""<style>
 .stApp, [data-testid="stAppViewContainer"] {background-color: #030712 !important;}
@@ -34,9 +35,9 @@ hr {margin-top: 0.5rem; margin-bottom: 0.5rem; border-color: #1e293b;}
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', unsafe_allow_html=True)
 
 # ==========================================
-# --- PANEL KONTROL V27.2 ---
+# --- PANEL KONTROL V27.3 ---
 # ==========================================
-st.markdown("### ⚙️ PANEL KONTROL (V27.2 - LUXURY EDITION)")
+st.markdown("### ⚙️ PANEL KONTROL (V27.3 - LUXURY & ANTI-CRASH)")
 
 col_in1, col_in2, col_in3, col_in4 = st.columns(4)
 with col_in1:
@@ -57,8 +58,16 @@ elif "NET SELL" in status_asing: asing_label = "<span style='color:#f87171; font
 else: asing_label = "<span style='color:#fbbf24; font-weight:bold;'>MIXED 🟡</span>"
 
 # ==========================================
-# --- MESIN KALKULASI IHSG ---
+# --- FUNGSI KEAMANAN BESI (ANTI-CRASH) ---
 # ==========================================
+def safe_num(val):
+    try: return float(val) if val is not None and not pd.isna(val) else 0.0
+    except: return 0.0
+
+def safe_int(val):
+    try: return int(float(val)) if val is not None and not pd.isna(val) else 0
+    except: return 0
+
 @st.cache_data(ttl=300)
 def get_ihsg_status():
     try:
@@ -70,18 +79,14 @@ def get_ihsg_status():
             if change_pct > 0.3: return f"🟢 IHSG AMAN (+{change_pct:.2f}%)", "#4ade80"
             elif change_pct < -0.3: return f"🔴 IHSG RAWAN ({change_pct:.2f}%)", "#f87171"
             else: return f"🟡 IHSG SIDEWAYS ({change_pct:.2f}%)", "#fbbf24"
-        return "⚪ IHSG OFFLINE", "#9ca3af"
-    except: return "⚪ IHSG ERROR", "#9ca3af"
+        return "⚪ IHSG OFFLINE", "#94a3b8"
+    except: return "⚪ IHSG ERROR", "#94a3b8"
 
 ihsg_text, ihsg_color = get_ihsg_status()
 
 # ==========================================
-# --- MESIN KALKULASI DEWA V27.2 ---
+# --- MESIN KALKULASI DEWA V27.3 ---
 # ==========================================
-def safe_num(val):
-    try: return float(val) if val is not None else 0.0
-    except: return 0.0
-
 @st.cache_data(ttl=60)
 def get_stock_data(ticker_symbol):
     try:
@@ -117,7 +122,7 @@ def get_stock_data(ticker_symbol):
         company_name = info.get('longName', f"PT {ticker_symbol.replace('.JK', '')} Tbk")
         
         limit_pct = 0.35 if api_prev_close < 200 else (0.25 if 200 <= api_prev_close <= 5000 else 0.20)
-        ara_price, arb_price = int(api_prev_close * (1 + limit_pct)), int(api_prev_close * (1 - limit_pct))
+        ara_price, arb_price = safe_int(api_prev_close * (1 + limit_pct)), safe_int(api_prev_close * (1 - limit_pct))
         
         close, low, high, vol = hist_6m['Close'], hist_6m['Low'], hist_6m['High'], hist_6m['Volume']
         
@@ -140,13 +145,13 @@ def get_stock_data(ticker_symbol):
         pbv_raw = safe_num(info.get('priceToBook'))
         roe_raw = safe_num(info.get('returnOnEquity'))
         
-        pe_color = "#4ade80" if 0 < pe_raw <= 15 else ("#fbbf24" if 15 < pe_raw <= 25 else ("#f87171" if pe_raw > 25 else "#9ca3af"))
-        pbv_color = "#4ade80" if 0 < pbv_raw <= 1.5 else ("#fbbf24" if 1.5 < pbv_raw <= 3 else ("#f87171" if pbv_raw > 3 else "#9ca3af"))
-        roe_color = "#4ade80" if roe_raw >= 0.15 else ("#fbbf24" if 0.05 <= roe_raw < 0.15 else ("#f87171" if roe_raw > 0 else "#9ca3af"))
+        pe_color = "#4ade80" if 0 < pe_raw <= 15 else ("#fbbf24" if 15 < pe_raw <= 25 else ("#f87171" if pe_raw > 25 else "#94a3b8"))
+        pbv_color = "#4ade80" if 0 < pbv_raw <= 1.5 else ("#fbbf24" if 1.5 < pbv_raw <= 3 else ("#f87171" if pbv_raw > 3 else "#94a3b8"))
+        roe_color = "#4ade80" if roe_raw >= 0.15 else ("#fbbf24" if 0.05 <= roe_raw < 0.15 else ("#f87171" if roe_raw > 0 else "#94a3b8"))
         
-        pe_str = f"<strong style='color:{pe_color};'>{pe_raw:.2f}x</strong>" if pe_raw > 0 else "<strong style='color:#9ca3af;'>N/A</strong>"
-        pbv_str = f"<strong style='color:{pbv_color};'>{pbv_raw:.2f}x</strong>" if pbv_raw > 0 else "<strong style='color:#9ca3af;'>N/A</strong>"
-        roe_str = f"<strong style='color:{roe_color};'>{roe_raw * 100:.1f}%</strong>" if roe_raw != 0 else "<strong style='color:#9ca3af;'>N/A</strong>"
+        pe_str = f"<strong style='color:{pe_color};'>{pe_raw:.2f}x</strong>" if pe_raw > 0 else "<strong style='color:#94a3b8;'>N/A</strong>"
+        pbv_str = f"<strong style='color:{pbv_color};'>{pbv_raw:.2f}x</strong>" if pbv_raw > 0 else "<strong style='color:#94a3b8;'>N/A</strong>"
+        roe_str = f"<strong style='color:{roe_color};'>{roe_raw * 100:.1f}%</strong>" if roe_raw != 0 else "<strong style='color:#94a3b8;'>N/A</strong>"
 
         if pe_raw == 0 and pbv_raw == 0: 
             stat_funda, funda_bg = "MURNI TEKNIKAL / GORENGAN", "rgba(251, 191, 36, 0.15); border: 1px solid #fbbf24; color: #fbbf24;"
@@ -157,8 +162,8 @@ def get_stock_data(ticker_symbol):
             else:
                 stat_funda, funda_bg = "BERISIKO / MAHAL", "rgba(248, 113, 113, 0.15); border: 1px solid #f87171; color: #f87171;"
 
-        high_52, low_52 = hist['High'].max(), hist['Low'].min()
-        rentang_52 = f"<strong style='color:#f3f4f6;'>Rp{int(low_52)} - Rp{int(high_52)}</strong>"
+        high_52, low_52 = safe_num(hist['High'].max()), safe_num(hist['Low'].min())
+        rentang_52 = f"<strong style='color:#f3f4f6;'>Rp{safe_int(low_52)} - Rp{safe_int(high_52)}</strong>"
 
         # TEKNIKAL & TREN
         sma20, sma60 = close.rolling(20).mean().iloc[-1], close.rolling(60).mean().iloc[-1]
@@ -184,9 +189,9 @@ def get_stock_data(ticker_symbol):
         sup_terdekat = hist_6m['Low'].tail(20).min()
         if latest_price < sup_terdekat: sup_terdekat = latest_price * 0.95
         
-        swing_high, swing_low = hist_6m['High'].tail(60).max(), hist_6m['Low'].tail(60).min()
-        if pd.isna(swing_high): swing_high = latest_price
-        if pd.isna(swing_low): swing_low = latest_price
+        swing_high, swing_low = safe_num(hist_6m['High'].tail(60).max()), safe_num(hist_6m['Low'].tail(60).min())
+        if swing_high == 0: swing_high = latest_price
+        if swing_low == 0: swing_low = latest_price
         
         diff = swing_high - swing_low
         fibo_382, fibo_500, fibo_618 = swing_high - (0.382 * diff), swing_high - (0.500 * diff), swing_high - (0.618 * diff)
@@ -202,7 +207,7 @@ def get_stock_data(ticker_symbol):
         daily_range = high - low
         atr_20 = daily_range.rolling(20).mean().iloc[-1]
         trailing_stop = latest_price - (1.5 * atr_20)
-        if trailing_stop < sup_terdekat: trailing_stop = sup_terdekat
+        if pd.isna(trailing_stop) or trailing_stop < sup_terdekat: trailing_stop = sup_terdekat
         
         # KESIMPULAN TEKNIKAL LUXURY
         if rsi_val >= 70: 
@@ -237,10 +242,11 @@ def get_stock_data(ticker_symbol):
 
 data = get_stock_data(ticker_yf)
 if data is None or isinstance(data, dict) and "error" in data:
-    st.error(f"❌ Terjadi kesalahan data untuk saham {ticker_input}.")
+    st.error(f"❌ Terjadi kesalahan data untuk saham {ticker_input}. Kemungkinan server Yahoo Finance sedang bermasalah.")
     st.stop()
 
-p_val, r_val, s_val, ts_val = int(data['price']), int(data['res']), int(data['sup']), int(data['ts'])
+# PERLINDUNGAN ANTI CRASH DARI YAHOO FINANCE
+p_val, r_val, s_val, ts_val = safe_int(data.get('price')), safe_int(data.get('res')), safe_int(data.get('sup')), safe_int(data.get('ts'))
 
 # ==========================================
 # --- PENILAIAN SKOR & MONEY MANAGEMENT ---
@@ -331,11 +337,11 @@ st.divider()
 st.markdown(f"""
 <div style='background: linear-gradient(90deg, #1e3a8a, #0f172a); border: 1px solid #3b82f6; padding: 10px 15px; border-radius: 10px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.4);'>
     <div style='color:#93c5fd; font-weight:bold; font-size:0.85rem; text-transform:uppercase;'>🎯 Fibo Radar (60 Days):</div>
-    <div style='text-align:center; padding: 0 10px; border-right: 1px solid #334151;'><div style='font-size:0.7rem; color:#94a3b8;'>100% (High)</div><strong style='color:#f3f4f6; font-size:0.95rem;'>Rp{int(data['fibo_100'])}</strong></div>
-    <div style='text-align:center; padding: 0 10px; border-right: 1px solid #334151;'><div style='font-size:0.7rem; color:#4ade80;'>61.8% (Golden)</div><strong style='color:#4ade80; font-size:0.95rem;'>Rp{int(data['fibo_618'])}</strong></div>
-    <div style='text-align:center; padding: 0 10px; border-right: 1px solid #334151;'><div style='font-size:0.7rem; color:#fbbf24;'>50.0% (Mid)</div><strong style='color:#fbbf24; font-size:0.95rem;'>Rp{int(data['fibo_500'])}</strong></div>
-    <div style='text-align:center; padding: 0 10px; border-right: 1px solid #334151;'><div style='font-size:0.7rem; color:#f87171;'>38.2% (Support)</div><strong style='color:#f87171; font-size:0.95rem;'>Rp{int(data['fibo_382'])}</strong></div>
-    <div style='text-align:center; padding: 0 10px;'><div style='font-size:0.7rem; color:#94a3b8;'>0% (Low)</div><strong style='color:#f3f4f6; font-size:0.95rem;'>Rp{int(data['fibo_0'])}</strong></div>
+    <div style='text-align:center; padding: 0 10px; border-right: 1px solid #334151;'><div style='font-size:0.7rem; color:#94a3b8;'>100% (High)</div><strong style='color:#f3f4f6; font-size:0.95rem;'>Rp{safe_int(data['fibo_100'])}</strong></div>
+    <div style='text-align:center; padding: 0 10px; border-right: 1px solid #334151;'><div style='font-size:0.7rem; color:#4ade80;'>61.8% (Golden)</div><strong style='color:#4ade80; font-size:0.95rem;'>Rp{safe_int(data['fibo_618'])}</strong></div>
+    <div style='text-align:center; padding: 0 10px; border-right: 1px solid #334151;'><div style='font-size:0.7rem; color:#fbbf24;'>50.0% (Mid)</div><strong style='color:#fbbf24; font-size:0.95rem;'>Rp{safe_int(data['fibo_500'])}</strong></div>
+    <div style='text-align:center; padding: 0 10px; border-right: 1px solid #334151;'><div style='font-size:0.7rem; color:#f87171;'>38.2% (Support)</div><strong style='color:#f87171; font-size:0.95rem;'>Rp{safe_int(data['fibo_382'])}</strong></div>
+    <div style='text-align:center; padding: 0 10px;'><div style='font-size:0.7rem; color:#94a3b8;'>0% (Low)</div><strong style='color:#f3f4f6; font-size:0.95rem;'>Rp{safe_int(data['fibo_0'])}</strong></div>
 </div>
 """, unsafe_allow_html=True)
 

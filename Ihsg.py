@@ -10,7 +10,7 @@ import streamlit.components.v1 as components
 # ==========================================
 # --- KONFIGURASI HALAMAN ---
 # ==========================================
-st.set_page_config(page_title="HOLY GRAIL V32 - SOP & Rulebook", layout="wide")
+st.set_page_config(page_title="HOLY GRAIL V33 - Mobile Responsive", layout="wide")
 
 st.markdown("""<style>
 .stApp, [data-testid="stAppViewContainer"] {background-color: #030712 !important;}
@@ -20,7 +20,7 @@ h1, h2, h3, h4, h5, h6, p, span, li, label, div.stMarkdown, .stText {color: #f3f
 .block-container {padding-top: 0.5rem !important; padding-bottom: 0.5rem !important;}
 header {visibility: hidden;}
 
-/* KOTAK LUXURY SLIM (PRESISI SAMA BESAR) */
+/* KOTAK LUXURY RESPONSIVE */
 div[data-testid="stVerticalBlockBorderWrapper"] {
     background: linear-gradient(145deg, #0f172a = 0%, #020617 = 100%) !important; 
     border: 1px solid #1e293b !important; 
@@ -28,9 +28,10 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
     border-radius: 12px !important; 
     box-shadow: 0 8px 12px -3px rgba(0, 0, 0, 0.5) !important; 
     padding: 0.8rem !important;
+    height: 100% !important; /* Biarkan tinggi menyesuaikan konten di HP */
 }
 p, span, li, div.stMarkdown, .stText {font-size: 0.85rem !important; line-height: 1.4 !important;}
-hr {margin-top: 0.3rem; margin-bottom: 0.3rem; border-color: #1e293b;}
+hr {margin-top: 0.4rem; margin-bottom: 0.4rem; border-color: #1e293b;}
 .dataframe {background-color: #0f172a !important; color: #f3f4f6 !important; border-color: #334155 !important;}
 
 /* STYLING EXPANDER PANDUAN */
@@ -39,9 +40,9 @@ hr {margin-top: 0.3rem; margin-bottom: 0.3rem; border-color: #1e293b;}
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', unsafe_allow_html=True)
 
 # ==========================================
-# --- PANEL KONTROL V32 (5 KOLOM) ---
+# --- PANEL KONTROL V33 (5 KOLOM) ---
 # ==========================================
-st.markdown("### ⚙ PANEL KONTROL (V32 - WITH TRADING SOP)")
+st.markdown("### ⚙ PANEL KONTROL (V33 - MOBILE RESPONSIVE)")
 
 col_in1, col_in2, col_in3, col_in4, col_in5 = st.columns(5)
 with col_in1:
@@ -61,7 +62,6 @@ st.markdown("---")
 
 is_scalping = "Scalping" in timeframe_input
 yf_interval = "15m" if is_scalping else "1d"
-# TradingView dipaksa tetap Harian agar tidak error
 tv_interval = "D" 
 
 if "NET BUY" in status_asing: asing_label = "<span style='color:#4ade80; font-weight:bold;'>NET BUY 🟢</span>"
@@ -103,7 +103,7 @@ def get_ihsg_status():
 ihsg_text, ihsg_color = get_ihsg_status()
 
 # ==========================================
-# --- MESIN KALKULASI DEWA V32 ---
+# --- MESIN KALKULASI DEWA V33 ---
 # ==========================================
 @st.cache_data(ttl=60)
 def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
@@ -160,9 +160,9 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
         sma20 = close.rolling(20).mean().iloc[-1] if len(close) >= 20 else close.iloc[-1]
         sma60 = close.rolling(60).mean().iloc[-1] if len(close) >= 60 else sma20
         
-        if latest_price > sma20 and latest_price > sma60: mtf_status, mtf_score, trend_col = "FASE MARKUP (Uptrend)", 2, "#4ade80"
-        elif latest_price < sma20 and latest_price < sma60: mtf_status, mtf_score, trend_col = "FASE MARKDOWN (Downtrend)", 0, "#f87171"
-        else: mtf_status, mtf_score, trend_col = "KONSOLIDASI (Sideways)", 1, "#fbbf24"
+        if latest_price > sma20 and latest_price > sma60: mtf_status, mtf_score, trend_col = "Uptrend (Markup)", 2, "#4ade80"
+        elif latest_price < sma20 and latest_price < sma60: mtf_status, mtf_score, trend_col = "Downtrend (Markdown)", 0, "#f87171"
+        else: mtf_status, mtf_score, trend_col = "Sideways", 1, "#fbbf24"
 
         delta = close.diff()
         rs = (delta.where(delta > 0, 0)).rolling(window=14).mean() / (-delta.where(delta < 0, 0)).rolling(window=14).mean()
@@ -182,9 +182,9 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
         if pd.isna(std20): std20 = 1.0
         upper_bb, lower_bb = sma20 + (2 * std20), sma20 - (2 * std20)
         
-        if latest_price > upper_bb: bb_stat, bb_score = "Breakout Atas (Kuat)", 2
-        elif latest_price < lower_bb: bb_stat, bb_score = "Jebol Bawah (Lemah)", 0
-        else: bb_stat, bb_score = "Di Dalam Bands (Normal)", 1
+        if latest_price > upper_bb: bb_stat, bb_score = "Breakout Atas", 2
+        elif latest_price < lower_bb: bb_stat, bb_score = "Jebol Bawah", 0
+        else: bb_stat, bb_score = "Area Dalam Bands", 1
         
         res_terdekat = hist_6m['High'].tail(20).max() if len(hist_6m) >= 20 else latest_price * 1.05
         if pd.isna(res_terdekat) or latest_price > res_terdekat: res_terdekat = latest_price * 1.05
@@ -198,9 +198,9 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
         diff = swing_high - swing_low
         fibo_382, fibo_500, fibo_618 = swing_high - (0.382 * diff), swing_high - (0.500 * diff), swing_high - (0.618 * diff)
         
-        if latest_price >= fibo_382: fibo_stat, fibo_score = "Aman (> 38.2%)", 1
-        elif latest_price >= fibo_618: fibo_stat, fibo_score = "Golden Pocket Area", 1
-        else: fibo_stat, fibo_score = "Jebol Support Mayor", 0
+        if latest_price >= fibo_382: fibo_stat, fibo_score = "Aman (>38.2%)", 1
+        elif latest_price >= fibo_618: fibo_stat, fibo_score = "Golden Pocket", 1
+        else: fibo_stat, fibo_score = "Jebol Mayor", 0
 
         daily_range = high - low
         atr_20 = daily_range.rolling(20).mean().iloc[-1] if len(daily_range) >= 20 else (latest_price * 0.02)
@@ -220,13 +220,13 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
         cmf = (mfm * vol).rolling(20).sum() / cmf_vol_sum if cmf_vol_sum > 0 else 0
         cmf_latest = cmf.iloc[-1] if hasattr(cmf, 'iloc') else safe_num(cmf)
         
-        if cmf_latest > 0.05 and obv_latest > obv_sma: auto_bandar, bandar_score, bandar_color = "Akumulasi Kuat (AI)", 3, "#4ade80"
+        if cmf_latest > 0.05 and obv_latest > obv_sma: auto_bandar, bandar_score, bandar_color = "Akumulasi AI", 3, "#4ade80"
         elif cmf_latest < -0.05: auto_bandar, bandar_score, bandar_color = "Distribusi Besar", 0, "#f87171"
         else: auto_bandar, bandar_score, bandar_color = "Netral / Sepi", 1, "#fbbf24"
         
         vol_ma20 = vol.rolling(20).mean().iloc[-1] if len(vol) >= 20 else vol.iloc[-1]
         vol_ratio = (vol.iloc[-1] / vol_ma20) * 100 if vol_ma20 > 0 else 100
-        vpa_stat, vpa_score = (f"Ledakan Vol ({int(vol_ratio)}%)", 1) if vol_ratio > 150 else (f"Volume Normal", 0)
+        vpa_stat, vpa_score = (f"Ledakan ({int(vol_ratio)}%)", 1) if vol_ratio > 150 else (f"Volume Normal", 0)
         
         if is_screener:
             return {
@@ -246,26 +246,26 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
         pbv_color = "#4ade80" if 0 < pbv_raw <= 1.5 else ("#fbbf24" if 1.5 < pbv_raw <= 3 else ("#f87171" if pbv_raw > 3 else "#94a3b8"))
         roe_color = "#4ade80" if roe_raw >= 0.15 else ("#fbbf24" if 0.05 <= roe_raw < 0.15 else ("#f87171" if roe_raw > 0 else "#94a3b8"))
         
-        pe_str = f"<strong style='color:{pe_color};'>{pe_raw:.2f}x</strong>" if pe_raw > 0 else "<strong style='color:#94a3b8;'>N/A</strong>"
-        pbv_str = f"<strong style='color:{pbv_color};'>{pbv_raw:.2f}x</strong>" if pbv_raw > 0 else "<strong style='color:#94a3b8;'>N/A</strong>"
+        pe_str = f"<strong style='color:{pe_color};'>{pe_raw:.1f}x</strong>" if pe_raw > 0 else "<strong style='color:#94a3b8;'>N/A</strong>"
+        pbv_str = f"<strong style='color:{pbv_color};'>{pbv_raw:.1f}x</strong>" if pbv_raw > 0 else "<strong style='color:#94a3b8;'>N/A</strong>"
         roe_str = f"<strong style='color:{roe_color};'>{roe_raw * 100:.1f}%</strong>" if roe_raw != 0 else "<strong style='color:#94a3b8;'>N/A</strong>"
         eps_str = f"<strong style='color:#f3f4f6;'>Rp{eps_raw:,.0f}</strong>" if eps_raw > 0 else "<strong style='color:#94a3b8;'>N/A</strong>"
 
         if pe_raw == 0 and pbv_raw == 0: 
-            stat_funda, funda_bg = "MURNI TEKNIKAL / GORENGAN", "rgba(251, 191, 36, 0.15); border: 1px solid #fbbf24; color: #fbbf24;"
+            stat_funda, funda_bg = "MURNI TEKNIKAL", "rgba(251, 191, 36, 0.15); border: 1px solid #fbbf24; color: #fbbf24;"
         else:
             f_score = sum([pe_raw>0 and pe_raw<25, pbv_raw>0 and pbv_raw<4, roe_raw>0.05])
-            if f_score >= 2: stat_funda, funda_bg = "SEHAT / LAYAK INVEST", "rgba(74, 222, 128, 0.15); border: 1px solid #4ade80; color: #4ade80;"
-            else: stat_funda, funda_bg = "BERISIKO / MAHAL", "rgba(248, 113, 113, 0.15); border: 1px solid #f87171; color: #f87171;"
+            if f_score >= 2: stat_funda, funda_bg = "SEHAT & LAYAK", "rgba(74, 222, 128, 0.15); border: 1px solid #4ade80; color: #4ade80;"
+            else: stat_funda, funda_bg = "BERISIKO/MAHAL", "rgba(248, 113, 113, 0.15); border: 1px solid #f87171; color: #f87171;"
         
-        if rsi_val >= 70: stat_tech, tech_bg = "AWAS PUCUK (Rawan Guyur)", "rgba(248, 113, 113, 0.15); border: 1px solid #f87171; color: #f87171;"
-        elif rsi_val <= 30: stat_tech, tech_bg = "Oversold Extreme (Area Pantul)", "rgba(74, 222, 128, 0.15); border: 1px solid #4ade80; color: #4ade80;"
-        elif bb_score == 2 or macd_score == 1: stat_tech, tech_bg = "Tren Breakout / Momentum Kuat", "rgba(74, 222, 128, 0.15); border: 1px solid #4ade80; color: #4ade80;"
-        else: stat_tech, tech_bg = "Konsolidasi / Momentum Wajar", "rgba(251, 191, 36, 0.15); border: 1px solid #fbbf24; color: #fbbf24;"
+        if rsi_val >= 70: stat_tech, tech_bg = "AWAS PUCUK (Rawan)", "rgba(248, 113, 113, 0.15); border: 1px solid #f87171; color: #f87171;"
+        elif rsi_val <= 30: stat_tech, tech_bg = "Oversold (Area Pantul)", "rgba(74, 222, 128, 0.15); border: 1px solid #4ade80; color: #4ade80;"
+        elif bb_score == 2 or macd_score == 1: stat_tech, tech_bg = "Momentum Breakout", "rgba(74, 222, 128, 0.15); border: 1px solid #4ade80; color: #4ade80;"
+        else: stat_tech, tech_bg = "Konsolidasi (Wajar)", "rgba(251, 191, 36, 0.15); border: 1px solid #fbbf24; color: #fbbf24;"
         
-        if bandar_score == 3: stat_flow, flow_bg = "Akumulasi Masif (Institusi Masuk)", "rgba(74, 222, 128, 0.15); border: 1px solid #4ade80; color: #4ade80;"
-        elif bandar_score == 0: stat_flow, flow_bg = "Awas Guyuran Bandar Besar", "rgba(248, 113, 113, 0.15); border: 1px solid #f87171; color: #f87171;"
-        else: stat_flow, flow_bg = "Tarik Ulur (Market Mixed)", "rgba(251, 191, 36, 0.15); border: 1px solid #fbbf24; color: #fbbf24;"
+        if bandar_score == 3: stat_flow, flow_bg = "Akumulasi Masif", "rgba(74, 222, 128, 0.15); border: 1px solid #4ade80; color: #4ade80;"
+        elif bandar_score == 0: stat_flow, flow_bg = "Awas Guyuran Bandar", "rgba(248, 113, 113, 0.15); border: 1px solid #f87171; color: #f87171;"
+        else: stat_flow, flow_bg = "Market Mixed (Netral)", "rgba(251, 191, 36, 0.15); border: 1px solid #fbbf24; color: #fbbf24;"
 
         return {
             'price': latest_price, 'change': change_pct, 'name': company_name, 'res': res_terdekat, 'sup': sup_terdekat, 'ts': trailing_stop,
@@ -312,10 +312,10 @@ reward = r_val - p_val
 rr_ratio = round(reward / risk_per_share, 1) if risk_per_share > 0 else 0
 div_html = f"<div style='color:#f87171; font-weight:900; font-size:0.75rem; text-align:center; animation: blinker 1.5s linear infinite;'>⚠️ AWAS DIVIDEND TRAP!</div><style>@keyframes blinker {{ 50% {{ opacity: 0; }} }}</style>" if data.get('div_warning') else ""
 
-if rsi_display >= 85: entry_val, border_glow, accent_color = f"<span style='color:#f87171; font-weight:bold;'>⚠️ JANGAN HK (Pucuk)</span>", "0 0 15px rgba(248, 113, 113, 0.4)", "#f87171" 
-elif rr_ratio < 0.5 and score >= 8: entry_val, border_glow, accent_color = f"<span style='color:#fbbf24; font-weight:bold;'>⚠️ ANTRE! (R:R Jelek)</span>", "0 0 15px rgba(251, 191, 36, 0.4)", "#fbbf24" 
-elif score >= 8: entry_val, border_glow, accent_color = f"<span style='color:#4ade80; font-weight:bold;'>Rp{p_val} (HAJAR KANAN)</span>", "0 0 15px rgba(74, 222, 128, 0.4)", "#4ade80" 
-else: entry_val, border_glow, accent_color = "<span style='color:#fbbf24; font-weight:bold;'>WAIT / ANTRE BAWAH</span>", "0 0 15px rgba(251, 191, 36, 0.4)", "#fbbf24" 
+if rsi_display >= 85: entry_val, border_glow, accent_color = f"<span style='color:#f87171; font-weight:bold;'>⚠️ JANGAN HK</span>", "0 0 15px rgba(248, 113, 113, 0.4)", "#f87171" 
+elif rr_ratio < 0.5 and score >= 8: entry_val, border_glow, accent_color = f"<span style='color:#fbbf24; font-weight:bold;'>⚠️ ANTRE!</span>", "0 0 15px rgba(251, 191, 36, 0.4)", "#fbbf24" 
+elif score >= 8: entry_val, border_glow, accent_color = f"<span style='color:#4ade80; font-weight:bold;'>Rp{p_val} (HAJAR)</span>", "0 0 15px rgba(74, 222, 128, 0.4)", "#4ade80" 
+else: entry_val, border_glow, accent_color = "<span style='color:#fbbf24; font-weight:bold;'>WAIT / ANTRE</span>", "0 0 15px rgba(251, 191, 36, 0.4)", "#fbbf24" 
 
 # ==========================================
 # --- 1. HEADER DASHBOARD ---
@@ -327,98 +327,90 @@ col_h1, col_h2, col_h3, col_h4 = st.columns([1.6, 1.3, 1.1, 1.5])
 
 with col_h1:
     st.markdown(f"<div style='display:inline-block; background:rgba(255,255,255,0.05); border:1px solid #334151; padding:2px 8px; border-radius:6px; margin-bottom:6px;'><span style='color:{ihsg_color}; font-size:0.75rem; font-weight:bold; letter-spacing:0.5px;'>{ihsg_text}</span></div>", unsafe_allow_html=True)
-    st.markdown(f"""<div style="display: flex; align-items: center; gap: 8px; margin-top: 2px; margin-bottom: 2px;"><img src="{logo_url}" width="50" height="50" style="border-radius: 10px; background: white; padding: 3px; flex-shrink: 0;" onerror="this.style.display='none'"><div style='color:#f3f4f6; font-size: clamp(1.8rem, 3.5vw, 3.2rem); font-weight: 900; line-height: 1; letter-spacing: 1px;'>{ticker_input}</div></div>""", unsafe_allow_html=True)
-    st.markdown(f"""<div style='color:#94a3b8; font-size:0.95rem; font-weight:bold; white-space: nowrap;'>{data.get('name', '')}</div>
+    st.markdown(f"""<div style="display: flex; align-items: center; gap: 8px; margin-top: 2px; margin-bottom: 2px;"><img src="{logo_url}" width="40" height="40" style="border-radius: 8px; background: white; padding: 2px; flex-shrink: 0;" onerror="this.style.display='none'"><div style='color:#f3f4f6; font-size: clamp(1.5rem, 3.5vw, 2.5rem); font-weight: 900; line-height: 1; letter-spacing: 1px;'>{ticker_input}</div></div>""", unsafe_allow_html=True)
+    st.markdown(f"""<div style='color:#94a3b8; font-size:0.85rem; font-weight:bold; white-space: normal;'>{data.get('name', '')}</div>
     <div style='margin-top: 4px; border-left: 2px solid #3b82f6; padding-left: 6px;'>
-        <div style='font-size: 0.75rem; color: #64748b;'>Sector: <span style='color:#e2e8f0; font-weight:600;'>{data.get('sector', 'N/A')}</span> | Industry: <span style='color:#e2e8f0; font-weight:600;'>{data.get('industry', 'N/A')}</span></div>
+        <div style='font-size: 0.75rem; color: #64748b;'>Sector: <span style='color:#e2e8f0; font-weight:600;'>{data.get('sector', 'N/A')}</span><br>Industry: <span style='color:#e2e8f0; font-weight:600;'>{data.get('industry', 'N/A')}</span></div>
     </div>""", unsafe_allow_html=True)
 
 with col_h2:
-    st.markdown("<div style='text-align: center; margin-top: 10px;'>", unsafe_allow_html=True)
-    if score >= 12: st.markdown("<div style='color:#4ade80; font-size: 1.1rem; font-weight:900;'>GOD MODE ⭐⭐⭐⭐⭐</div>", unsafe_allow_html=True)
-    elif score >= 8: st.markdown("<div style='color:#4ade80; font-size: 1.1rem; font-weight:900;'>STRONG BUY ⭐⭐⭐⭐</div>", unsafe_allow_html=True)
-    elif score >= 5: st.markdown("<div style='color:#fbbf24; font-size: 1.1rem; font-weight:900;'>HOLD / WAIT ⭐⭐⭐</div>", unsafe_allow_html=True)
-    else: st.markdown("<div style='color:#f87171; font-size: 1.1rem; font-weight:900;'>SELL / AVOID ⭐</div>", unsafe_allow_html=True)
-    st.markdown(f"<div style='color:#fbbf24; font-size: 2.2rem; font-weight: 900; line-height:1.1;'>🌟 {score}.0<span style='font-size:1rem; color:#64748b;'>/15</span></div>", unsafe_allow_html=True)
-    st.markdown(f"<div style='font-size: 0.85rem; color:#94a3b8;'>Win: <strong style='color:{wr_color};'>{win_rate}</strong></div></div>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align: left; margin-top: 10px;'>", unsafe_allow_html=True)
+    if score >= 12: st.markdown("<div style='color:#4ade80; font-size: 1rem; font-weight:900;'>GOD MODE ⭐⭐⭐⭐⭐</div>", unsafe_allow_html=True)
+    elif score >= 8: st.markdown("<div style='color:#4ade80; font-size: 1rem; font-weight:900;'>STRONG BUY ⭐⭐⭐⭐</div>", unsafe_allow_html=True)
+    elif score >= 5: st.markdown("<div style='color:#fbbf24; font-size: 1rem; font-weight:900;'>HOLD / WAIT ⭐⭐⭐</div>", unsafe_allow_html=True)
+    else: st.markdown("<div style='color:#f87171; font-size: 1rem; font-weight:900;'>SELL / AVOID ⭐</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='color:#fbbf24; font-size: 2rem; font-weight: 900; line-height:1.1;'>🌟 {score}.0<span style='font-size:1rem; color:#64748b;'>/15</span></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='font-size: 0.8rem; color:#94a3b8;'>Win: <strong style='color:{wr_color};'>{win_rate}</strong></div></div>", unsafe_allow_html=True)
 
 with col_h3:
-    st.markdown(f"""<div style='display: flex; flex-direction: column; align-items: flex-end; justify-content: center; height: 100%; padding-top: 15px; padding-right: 10px;'>
-        <div style='color:#94a3b8; font-size:0.8rem; font-weight:bold; letter-spacing: 1px; margin-bottom: 2px;'>HARGA SAAT INI</div>
-        <div style='color:#f3f4f6; font-size: clamp(1.8rem, 3vw, 2.5rem); font-weight: 900; line-height: 1;'>Rp{p_val}</div>
-        <div style='background: rgba({ '74, 222, 128' if data.get('change', 0) >= 0 else '248, 113, 113' }, 0.15); padding: 2px 6px; border-radius: 4px; color: {color}; font-size: 0.9rem; font-weight: bold; border: 1px solid {color}; margin-top: 6px; display: inline-block;'>
+    st.markdown(f"""<div style='display: flex; flex-direction: column; align-items: flex-start; justify-content: center; height: 100%; padding-top: 10px;'>
+        <div style='color:#94a3b8; font-size:0.75rem; font-weight:bold; letter-spacing: 1px; margin-bottom: 2px;'>HARGA SAAT INI</div>
+        <div style='color:#f3f4f6; font-size: clamp(1.5rem, 3vw, 2.2rem); font-weight: 900; line-height: 1;'>Rp{p_val}</div>
+        <div style='background: rgba({ '74, 222, 128' if data.get('change', 0) >= 0 else '248, 113, 113' }, 0.15); padding: 2px 6px; border-radius: 4px; color: {color}; font-size: 0.85rem; font-weight: bold; border: 1px solid {color}; margin-top: 6px; display: inline-block;'>
             {arrow} {data.get('change', 0):.2f}%
         </div></div>""", unsafe_allow_html=True)
 
 with col_h4:
     rr_bg = "linear-gradient(90deg, #1e3a8a, #3b82f6)" if rr_ratio >= 1.5 else ("linear-gradient(90deg, #991b1b, #ef4444)" if rr_ratio < 0.5 else "linear-gradient(90deg, #78350f, #d97706)")
-    html_execution = f"""<div style='background: linear-gradient(145deg, #0f172a, #020617); border: 1px solid {accent_color}; padding: 10px; border-radius: 12px; box-shadow: {border_glow}; position: relative; overflow: hidden; margin-top: 4px;'>
+    html_execution = f"""<div style='background: linear-gradient(145deg, #0f172a, #020617); border: 1px solid {accent_color}; padding: 10px; border-radius: 12px; box-shadow: {border_glow}; position: relative; overflow: hidden; margin-top: 8px; width: 100%;'>
 <div style='position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: {accent_color}; box-shadow: 0 0 10px {accent_color};'></div>
 <div style='color:#e5e7eb; font-size:0.75rem; font-weight:800; letter-spacing:1px; margin-bottom: 6px; text-align: center;'>FINAL EXECUTION</div>
 {div_html}
 <div style='display:flex; flex-direction: column; gap: 4px; margin-top:4px;'>
-<div style='display:flex; justify-content: space-between; font-size: 0.8rem; border-bottom: 1px dashed #334151; padding-bottom: 2px;'><span style='color:#94a3b8;'>Entry Point</span> <span style='text-align: right;'>{entry_val}</span></div>
-<div style='display:flex; justify-content: space-between; font-size: 0.8rem; border-bottom: 1px dashed #334151; padding-bottom: 2px;'><span style='color:#94a3b8;'>Take Profit</span> <span style='color:#4ade80; font-weight:900;'>Rp{r_val}</span></div>
-<div style='display:flex; justify-content: space-between; font-size: 0.8rem; border-bottom: 1px dashed #334151; padding-bottom: 2px;'><span style='color:#94a3b8;'>Stop Loss</span> <span style='color:#f87171; font-weight:900;'>Rp{s_val}</span></div>
-<div style='display:flex; justify-content: space-between; font-size: 0.8rem; border-bottom: 1px dashed #334151; padding-bottom: 2px;'><span style='color:#94a3b8;'>Maks Beli</span> <span style='color:#4ade80; font-weight:900;'>{max_lot} LOT</span></div>
+<div style='display:flex; justify-content: space-between; align-items:center; font-size: 0.8rem; border-bottom: 1px dashed #334151; padding-bottom: 2px;'><span style='color:#94a3b8;'>Entry Point</span> <span style='text-align: right;'>{entry_val}</span></div>
+<div style='display:flex; justify-content: space-between; align-items:center; font-size: 0.8rem; border-bottom: 1px dashed #334151; padding-bottom: 2px;'><span style='color:#94a3b8;'>Take Profit</span> <span style='color:#4ade80; font-weight:900;'>Rp{r_val}</span></div>
+<div style='display:flex; justify-content: space-between; align-items:center; font-size: 0.8rem; border-bottom: 1px dashed #334151; padding-bottom: 2px;'><span style='color:#94a3b8;'>Stop Loss</span> <span style='color:#f87171; font-weight:900;'>Rp{s_val}</span></div>
+<div style='display:flex; justify-content: space-between; align-items:center; font-size: 0.8rem; border-bottom: 1px dashed #334151; padding-bottom: 2px;'><span style='color:#94a3b8;'>Maks Beli</span> <span style='color:#4ade80; font-weight:900;'>{max_lot} LOT</span></div>
 </div>
-<div style='background: {rr_bg}; color:white; padding:2px; border-radius:4px; text-align:center; font-weight:900; font-size:0.75rem; margin-top: 6px;'>⚖️ R:R = 1 : {rr_ratio}</div>
+<div style='background: {rr_bg}; color:white; padding:4px; border-radius:4px; text-align:center; font-weight:900; font-size:0.75rem; margin-top: 8px;'>⚖️ R:R = 1 : {rr_ratio}</div>
 </div>"""
     st.markdown(html_execution, unsafe_allow_html=True)
 
 # ==========================================
-# --- BUKU SAKU DEWA (SOP TRADING V32) ---
+# --- BUKU SAKU DEWA (SOP TRADING V33) ---
 # ==========================================
 st.markdown("<br>", unsafe_allow_html=True)
 with st.expander("📖 BUKU SAKU DEWA (Klik untuk membaca SOP & Aturan Main Eksekusi)"):
     st.markdown("""
-    <div style='padding: 10px; background: #0f172a; border-radius: 8px; border-left: 4px solid #3b82f6;'>
-    <h4 style='color: #38bdf8; margin-bottom: 15px;'>SOP (Standard Operating Procedure) Eksekusi Aplikasi Holy Grail:</h4>
+    <div style='padding: 10px; background: #0f172a; border-radius: 8px; border-left: 4px solid #3b82f6; font-size: 0.85rem;'>
+    <h4 style='color: #38bdf8; margin-bottom: 10px; font-size: 1rem;'>SOP Eksekusi Holy Grail:</h4>
     
-    <p><strong>🔥 1. CARA MEMBACA SKOR UTAMA (Bintang):</strong></p>
-    <ul>
-        <li>🌟 <strong>Skor 12 - 15 (GOD MODE):</strong> Sinyal langka dan terkuat! Artinya Bandar sedang akumulasi, Asing masuk, dan Teknikal mendukung. <strong>EKSEKUSI:</strong> Boleh <em>Hajar Kanan (Beli Langsung)</em> dengan Lot maksimal yang disarankan sistem.</li>
-        <li>⭐ <strong>Skor 8 - 11 (STRONG BUY):</strong> Sinyal beli yang bagus. <strong>EKSEKUSI:</strong> Wajib cek kotak <code>R:R Ratio</code> (Risk-Reward). Jika R:R di atas <strong>1 : 1.5</strong>, silakan beli. Jika R:R jelek (contoh 1:0.3), lebih baik <strong>ANTRE BAWAH</strong> di area Support/Fibo terdekat.</li>
-        <li>🟡 <strong>Skor 5 - 7 (HOLD / WAIT):</strong> Sinyal nanggung (Sideways/Ragu). <strong>EKSEKUSI:</strong> Jangan dibeli dulu. Masukkan ke <em>Watchlist</em>. Biarkan market dan bandar menentukan arahnya, baru kita menumpang.</li>
-        <li>🔴 <strong>Skor < 5 (SELL / AVOID):</strong> Saham sedang didistribusi atau tren hancur. <strong>EKSEKUSI:</strong> Tinggalkan! Jangan tangkap pisau jatuh walaupun harganya terlihat murah.</li>
+    <p><strong>🔥 1. CARA MEMBACA SKOR (Bintang):</strong></p>
+    <ul style='padding-left: 20px;'>
+        <li>🌟 <strong>12-15 (GOD MODE):</strong> Sinyal terkuat! Boleh <em>Hajar Kanan</em>.</li>
+        <li>⭐ <strong>8-11 (STRONG BUY):</strong> Bagus. Cek kotak <code>R:R Ratio</code>. Jika R:R > 1:1.5 silakan beli. Jika jelek, ANTRE BAWAH.</li>
+        <li>🟡 <strong>5-7 (HOLD / WAIT):</strong> Sinyal nanggung. Masukkan Watchlist.</li>
+        <li>🔴 <strong>< 5 (SELL / AVOID):</strong> Saham didistribusi. Hindari!</li>
     </ul>
 
-    <hr style='border-color: #334151;'>
     <p><strong>🚨 2. TIGA TANDA BAHAYA (RED FLAGS):</strong><br>
-    <em>Meskipun Skor menunjukkan GOD MODE, <strong>BATALKAN PEMBELIAN</strong> jika salah satu dari 3 hal ini terjadi:</em></p>
-    <ol>
-        <li><strong>RSI Pucuk (> 85):</strong> Muncul tulisan merah "JANGAN HK (Pucuk)" di Final Execution. Harga sudah terlalu mahal dan sangat rawan diguyur turun. Tunggu koreksi.</li>
-        <li><strong>AWAS DIVIDEND TRAP:</strong> Muncul teks merah kedap-kedip. Artinya saham ini baru saja/akan membagikan dividen. Biasanya setelah <em>Cum-Date</em>, harga akan dibanting ARB. Hindari!</li>
-        <li><strong>Bandar Distribusi Besar:</strong> Jika di Kotak 3 tertulis "Distribusi Besar", artinya bandar institusi sedang jualan pelan-pelan ke investor ritel. Jangan mau jadi penadah barang buangan.</li>
+    <em>BATALKAN BELI JIKA:</em></p>
+    <ol style='padding-left: 20px;'>
+        <li><strong>RSI Pucuk (>85):</strong> Muncul peringatan "JANGAN HK".</li>
+        <li><strong>AWAS DIVIDEND TRAP:</strong> Teks merah berkedip.</li>
+        <li><strong>Bandar Distribusi:</strong> Di kotak 3 tertulis "Distribusi Besar".</li>
     </ol>
-    
-    <hr style='border-color: #334151;'>
-    <p><strong>⚔️ 3. CARA MENGGUNAKAN MODE SCALPING (15 MENIT):</strong></p>
-    <ul>
-        <li>Gunakan mode ini <strong>HANYA</strong> jika Bosku punya waktu luang untuk memantau layar.</li>
-        <li>Targetnya adalah cuan tipis dan cepat (1% - 3%) lalu kabur. Jangan di-<em>hold</em> sampai berhari-hari.</li>
-        <li>Sangat direkomendasikan disiplin menekan tombol Jual / <em>Cut Loss</em> jika harga menjebol batas Stop Loss yang tertera di layar.</li>
-    </ul>
     </div>
     """, unsafe_allow_html=True)
 st.divider()
 
 # ==========================================
-# --- 2. CHART & TACTICAL FIBO BAR ---
+# --- 2. CHART & TACTICAL FIBO BAR (RESPONSIVE) ---
 # ==========================================
+# Diubah menggunakan flex-wrap agar di layar HP turun ke baris baru dan tidak gepeng
 st.markdown(f"""
-<div style='background: linear-gradient(90deg, #1e3a8a, #0f172a); border: 1px solid #3b82f6; padding: 6px 12px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.4);'>
-    <div style='color:#93c5fd; font-weight:bold; font-size:0.8rem; text-transform:uppercase;'>🎯 Fibo Radar:</div>
-    <div style='text-align:center; padding: 0 10px; border-right: 1px solid #334151;'><div style='font-size:0.65rem; color:#94a3b8;'>100% (High)</div><strong style='color:#f3f4f6; font-size:0.85rem;'>Rp{safe_int(data.get('fibo_100', 0))}</strong></div>
-    <div style='text-align:center; padding: 0 10px; border-right: 1px solid #334151;'><div style='font-size:0.65rem; color:#4ade80;'>61.8% (Golden)</div><strong style='color:#4ade80; font-size:0.85rem;'>Rp{safe_int(data.get('fibo_618', 0))}</strong></div>
-    <div style='text-align:center; padding: 0 10px; border-right: 1px solid #334151;'><div style='font-size:0.65rem; color:#fbbf24;'>50.0% (Mid)</div><strong style='color:#fbbf24; font-size:0.85rem;'>Rp{safe_int(data.get('fibo_500', 0))}</strong></div>
-    <div style='text-align:center; padding: 0 10px; border-right: 1px solid #334151;'><div style='font-size:0.65rem; color:#f87171;'>38.2% (Support)</div><strong style='color:#f87171; font-size:0.85rem;'>Rp{safe_int(data.get('fibo_382', 0))}</strong></div>
-    <div style='text-align:center; padding: 0 10px;'><div style='font-size:0.65rem; color:#94a3b8;'>0% (Low)</div><strong style='color:#f3f4f6; font-size:0.85rem;'>Rp{safe_int(data.get('fibo_0', 0))}</strong></div>
+<div style='background: linear-gradient(90deg, #1e3a8a, #0f172a); border: 1px solid #3b82f6; padding: 10px; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.4); display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-around; align-items: center;'>
+    <div style='color:#93c5fd; font-weight:bold; font-size:0.8rem; text-transform:uppercase; text-align: center; width: 100%; border-bottom: 1px dashed #334151; padding-bottom: 5px; margin-bottom: 5px;'>🎯 Fibo Radar</div>
+    <div style='text-align:center; padding: 5px; flex: 1; min-width: 80px;'><div style='font-size:0.65rem; color:#94a3b8;'>100% (High)</div><strong style='color:#f3f4f6; font-size:0.85rem;'>Rp{safe_int(data.get('fibo_100', 0))}</strong></div>
+    <div style='text-align:center; padding: 5px; flex: 1; min-width: 80px;'><div style='font-size:0.65rem; color:#4ade80;'>61.8% (Golden)</div><strong style='color:#4ade80; font-size:0.85rem;'>Rp{safe_int(data.get('fibo_618', 0))}</strong></div>
+    <div style='text-align:center; padding: 5px; flex: 1; min-width: 80px;'><div style='font-size:0.65rem; color:#fbbf24;'>50.0% (Mid)</div><strong style='color:#fbbf24; font-size:0.85rem;'>Rp{safe_int(data.get('fibo_500', 0))}</strong></div>
+    <div style='text-align:center; padding: 5px; flex: 1; min-width: 80px;'><div style='font-size:0.65rem; color:#f87171;'>38.2% (Support)</div><strong style='color:#f87171; font-size:0.85rem;'>Rp{safe_int(data.get('fibo_382', 0))}</strong></div>
+    <div style='text-align:center; padding: 5px; flex: 1; min-width: 80px;'><div style='font-size:0.65rem; color:#94a3b8;'>0% (Low)</div><strong style='color:#f3f4f6; font-size:0.85rem;'>Rp{safe_int(data.get('fibo_0', 0))}</strong></div>
 </div>
 """, unsafe_allow_html=True)
 
 if is_scalping:
-    st.info("ℹ️ Mode Scalping: Analisa kotak di bawah dihitung menggunakan timeframe 15 menit. (Note: Gambar Chart TradingView tetap Harian/D karena limitasi gratis BEI).")
+    st.info("ℹ️ Mode Scalping: Analisa kotak menggunakan 15 menit. (Chart tetap Harian).")
 
 components.html(f"""
 <div style="border-radius: 10px; border: 1px solid #334151; overflow: hidden; background: #0f172a; margin-bottom: 10px; height: 350px;">
@@ -442,50 +434,52 @@ components.html(f"""
 """, height=360)
 
 # ==========================================
-# --- 3. 3 KOTAK SENJATA UTAMA ---
+# --- 3. 3 KOTAK SENJATA UTAMA (RESPONSIVE) ---
 # ==========================================
-st.markdown(f"""<div style='display:flex; justify-content:space-around; background:#0f172a; border: 1px solid #334151; padding:8px; border-radius:8px; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);'>
-    <div style='text-align:center;'>🚀 <span style='color:#94a3b8; font-size:0.85rem;'>Batas ARA:</span> <strong style='color:#4ade80; font-size:1rem;'>Rp{data.get('ara_price', 0)}</strong></div>
-    <div style='text-align:center;'>🩸 <span style='color:#94a3b8; font-size:0.85rem;'>Batas ARB:</span> <strong style='color:#f87171; font-size:1rem;'>Rp{data.get('arb_price', 0)}</strong></div></div>""", unsafe_allow_html=True)
+# ARA ARB BAR (Responsive)
+st.markdown(f"""<div style='display:flex; flex-wrap: wrap; justify-content:space-around; gap: 10px; background:#0f172a; border: 1px solid #334151; padding:10px; border-radius:8px; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);'>
+    <div style='text-align:center; flex: 1; min-width: 120px;'>🚀 <span style='color:#94a3b8; font-size:0.85rem;'>Batas ARA:</span> <strong style='color:#4ade80; font-size:1rem;'>Rp{data.get('ara_price', 0)}</strong></div>
+    <div style='text-align:center; flex: 1; min-width: 120px;'>🩸 <span style='color:#94a3b8; font-size:0.85rem;'>Batas ARB:</span> <strong style='color:#f87171; font-size:1rem;'>Rp{data.get('arb_price', 0)}</strong></div></div>""", unsafe_allow_html=True)
 
+# Height diganti jadi 100% dan min-height 250px agar stretch di HP
 def render_luxury_box(title, content, badge_text, badge_style):
-    return f"""<div style='height: 300px; display: flex; flex-direction: column; justify-content: space-between;'>
+    return f"""<div style='height: 100%; min-height: 250px; display: flex; flex-direction: column; justify-content: space-between;'>
     <div>
-        <div style='font-size: 1rem; font-weight: 900; color:#38bdf8; letter-spacing: 0.5px;'>{title}</div>
-        <hr style='margin: 4px 0; border-color:#334151;'>
+        <div style='font-size: 0.95rem; font-weight: 900; color:#38bdf8; letter-spacing: 0.5px;'>{title}</div>
+        <hr style='margin: 6px 0; border-color:#334151;'>
         <div style='padding: 2px 0; display:flex; flex-direction: column; gap: 8px;'>{content}</div>
     </div>
-    <div style='background: {badge_style}; border-radius: 6px; padding: 6px; text-align: center; margin-top: auto; font-weight: 800; font-size: 0.85rem; letter-spacing: 0.5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);'>
+    <div style='background: {badge_style}; border-radius: 6px; padding: 6px; text-align: center; margin-top: 15px; font-weight: 800; font-size: 0.8rem; letter-spacing: 0.5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);'>
         {badge_text}
     </div>
 </div>"""
 
-c1 = f"""<div style='display:flex; justify-content: space-between;'><span style='color:#94a3b8;'>Market Cap:</span> <strong style='color:#f3f4f6;'>{data.get('mc_str', 'N/A')}</strong></div>
-<div style='display:flex; justify-content: space-between;'><span style='color:#94a3b8;'>Rentang 52W:</span> {data.get('rentang_52', 'N/A')}</div>
+c1 = f"""<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Market Cap:</span> <strong style='color:#f3f4f6; text-align:right;'>{data.get('mc_str', 'N/A')}</strong></div>
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Rentang 52W:</span> <div style='text-align:right;'>{data.get('rentang_52', 'N/A')}</div></div>
 <hr style='margin: 2px 0; border: 0.5px dashed #334151;'>
-<div style='display:flex; justify-content: space-between;'><span style='color:#94a3b8;'>PER (Valuasi):</span> {data.get('pe_str', 'N/A')}</div>
-<div style='display:flex; justify-content: space-between;'><span style='color:#94a3b8;'>PBV (Aset):</span> {data.get('pbv_str', 'N/A')}</div>
-<div style='display:flex; justify-content: space-between;'><span style='color:#94a3b8;'>ROE (Kinerja):</span> {data.get('roe_str', 'N/A')}</div>
-<div style='display:flex; justify-content: space-between;'><span style='color:#94a3b8;'>EPS (Laba):</span> {data.get('eps_str', 'N/A')}</div>"""
-b1 = render_luxury_box("💼 1. FUNDAMENTAL & VALUASI", c1, f"STATUS: {data.get('stat_funda', 'N/A')}", data.get('funda_bg', ''))
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>PER (Valuasi):</span> <div style='text-align:right;'>{data.get('pe_str', 'N/A')}</div></div>
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>PBV (Aset):</span> <div style='text-align:right;'>{data.get('pbv_str', 'N/A')}</div></div>
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>ROE (Kinerja):</span> <div style='text-align:right;'>{data.get('roe_str', 'N/A')}</div></div>
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>EPS (Laba):</span> <div style='text-align:right;'>{data.get('eps_str', 'N/A')}</div></div>"""
+b1 = render_luxury_box("💼 1. FUNDAMENTAL", c1, f"STATUS: {data.get('stat_funda', 'N/A')}", data.get('funda_bg', ''))
 
-c2 = f"""<div style='display:flex; justify-content: space-between;'><span style='color:#94a3b8;'>Tren Utama:</span> <strong style='color:{data.get('trend_col', '#fff')};'>{data.get('trend', 'N/A')}</strong></div>
-<div style='display:flex; justify-content: space-between;'><span style='color:#94a3b8;'>Posisi Fibo:</span> <strong style='color:#f3f4f6;'>{data.get('fibo_stat', 'N/A')}</strong></div>
+c2 = f"""<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8; flex-shrink: 0; margin-right: 5px;'>Tren Utama:</span> <strong style='color:{data.get('trend_col', '#fff')}; text-align:right;'>{data.get('trend', 'N/A')}</strong></div>
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8; flex-shrink: 0; margin-right: 5px;'>Posisi Fibo:</span> <strong style='color:#f3f4f6; text-align:right;'>{data.get('fibo_stat', 'N/A')}</strong></div>
 <hr style='margin: 2px 0; border: 0.5px dashed #334151;'>
-<div style='display:flex; justify-content: space-between;'><span style='color:#94a3b8;'>RSI (14):</span> <strong style='color:{data.get('rsi_color', '#fff')}'>{rsi_display:.1f}</strong></div>
-<div style='display:flex; justify-content: space-between;'><span style='color:#94a3b8;'>Sinyal MACD:</span> {data.get('macd_str', 'N/A')}</div>
-<div style='display:flex; justify-content: space-between;'><span style='color:#94a3b8;'>Bollinger Bands:</span> <strong style='color:#4ade80;'>{data.get('bb_stat', 'N/A')}</strong></div>
-<div style='display:flex; justify-content: space-between;'><span style='color:#94a3b8;'>Trailing Stop:</span> <strong style='color:#fbbf24;'>Rp{ts_val}</strong></div>"""
-b2 = render_luxury_box("📈 2. TEKNIKAL & MOMENTUM", c2, f"KESIMPULAN: {data.get('stat_tech', 'N/A')}", data.get('tech_bg', ''))
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>RSI (14):</span> <strong style='color:{data.get('rsi_color', '#fff')}; text-align:right;'>{rsi_display:.1f}</strong></div>
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Sinyal MACD:</span> <div style='text-align:right;'>{data.get('macd_str', 'N/A')}</div></div>
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Bollinger B.:</span> <strong style='color:#4ade80; text-align:right;'>{data.get('bb_stat', 'N/A')}</strong></div>
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Trailing Stop:</span> <strong style='color:#fbbf24; text-align:right;'>Rp{ts_val}</strong></div>"""
+b2 = render_luxury_box("📈 2. TEKNIKAL", c2, f"KESIMPULAN: {data.get('stat_tech', 'N/A')}", data.get('tech_bg', ''))
 
-c3 = f"""<div style='display:flex; justify-content: space-between;'><span style='color:#94a3b8;'>AI Bandar Flow:</span> <strong style='color:{data.get('bandar_color', '#fff')};'>{data.get('auto_bandar', 'N/A')}</strong></div>
-<div style='display:flex; justify-content: space-between;'><span style='color:#94a3b8;'>Asing Flow:</span> {asing_label}</div>
+c3 = f"""<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8; flex-shrink: 0; margin-right: 5px;'>AI Bandar:</span> <strong style='color:{data.get('bandar_color', '#fff')}; text-align:right;'>{data.get('auto_bandar', 'N/A')}</strong></div>
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8; flex-shrink: 0; margin-right: 5px;'>Asing Flow:</span> <div style='text-align:right;'>{asing_label}</div></div>
 <hr style='margin: 2px 0; border: 0.5px dashed #334151;'>
-<div style='display:flex; justify-content: space-between;'><span style='color:#94a3b8;'>Volume (VPA):</span> <strong style='color:#4ade80;'>{data.get('vpa_stat', 'N/A')}</strong></div>
-<div style='display:flex; justify-content: space-between;'><span style='color:#94a3b8;'>Volatilitas ATR:</span> <strong style='color:#4ade80;'>Terpantau</strong></div>
-<div style='display:flex; justify-content: space-between;'><span style='color:#94a3b8;'>Momentum Pasar:</span> <strong style='color:#f3f4f6;'>Aktif</strong></div>
-<div style='display:flex; justify-content: space-between;'><span style='color:#94a3b8;'>Orderbook:</span> <strong style='color:#f3f4f6;'>Likuid</strong></div>"""
-b3 = render_luxury_box("🦅 3. BANDARMOLOGY & FLOW", c3, f"FLOW: {data.get('stat_flow', 'N/A')}", data.get('flow_bg', ''))
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Volume (VPA):</span> <strong style='color:#4ade80; text-align:right;'>{data.get('vpa_stat', 'N/A')}</strong></div>
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Volatilitas ATR:</span> <strong style='color:#4ade80; text-align:right;'>Terpantau</strong></div>
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Momentum:</span> <strong style='color:#f3f4f6; text-align:right;'>Aktif</strong></div>
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Orderbook:</span> <strong style='color:#f3f4f6; text-align:right;'>Likuid</strong></div>"""
+b3 = render_luxury_box("🦅 3. BANDARMOLOGY", c3, f"FLOW: {data.get('stat_flow', 'N/A')}", data.get('flow_bg', ''))
 
 cols = st.columns(3)
 for col, box in zip(cols, [b1, b2, b3]):
@@ -505,9 +499,9 @@ with tab_movers:
 with tab_screener:
     st.markdown("#### 🔍 Saringan Saham Kustom: Bandarmology & Foreign Flow")
     col_sc1, col_sc2, col_sc3 = st.columns(3)
-    with col_sc1: f_bandar = st.selectbox("Filter Bandar Flow:", ["Semua", "Akumulasi Kuat (AI)", "Netral / Sepi", "Distribusi Besar"])
+    with col_sc1: f_bandar = st.selectbox("Filter Bandar Flow:", ["Semua", "Akumulasi AI", "Netral / Sepi", "Distribusi Besar"])
     with col_sc2: f_asing = st.selectbox("Filter Asing Flow:", ["Semua", "Asing NET BUY (Masuk Besar)", "Asing Netral / Mixed", "Asing NET SELL (Keluar)"])
-    with col_sc3: f_tren = st.selectbox("Fase Tren Saham:", ["Semua", "FASE MARKUP (Uptrend)", "KONSOLIDASI (Sideways)", "FASE MARKDOWN (Downtrend)"])
+    with col_sc3: f_tren = st.selectbox("Fase Tren Saham:", ["Semua", "Uptrend (Markup)", "Sideways", "Downtrend (Markdown)"])
     input_watchlist = st.text_area("Daftar Pantauan (pisahkan dengan koma):", "DWGL, IATA, ADRO, BBCA, BBRI, BUMI, GOTO, TLKM, AMMN, BREN")
     
     if st.button("🚀 Jalankan Saringan Sinyal Super"):
@@ -572,22 +566,22 @@ with tab_backtest:
                         win_rate_bt = (win_trades / total_trades) * 100
                         total_profit = sum(trades)
                         
-                        html_bt = f"""<div style='display:flex; gap:15px; margin-top:20px; margin-bottom: 20px;'>
-                           <div style='flex:1; background:#0f172a; padding:20px; border-radius:10px; border:1px solid #334151; text-align:center;'>
+                        html_bt = f"""<div style='display:flex; flex-wrap: wrap; gap:15px; margin-top:20px; margin-bottom: 20px;'>
+                           <div style='flex:1; min-width: 150px; background:#0f172a; padding:20px; border-radius:10px; border:1px solid #334151; text-align:center;'>
                                <div style='color:#94a3b8; font-size:0.9rem;'>Total Trade Eksekusi</div>
                                <div style='color:#f3f4f6; font-size:2rem; font-weight:bold;'>{total_trades}x</div>
                            </div>
-                           <div style='flex:1; background:#0f172a; padding:20px; border-radius:10px; border:1px solid #334151; text-align:center;'>
+                           <div style='flex:1; min-width: 150px; background:#0f172a; padding:20px; border-radius:10px; border:1px solid #334151; text-align:center;'>
                                <div style='color:#94a3b8; font-size:0.9rem;'>Akurasi Menang (Win Rate)</div>
                                <div style='color:#4ade80; font-size:2rem; font-weight:bold;'>{win_rate_bt:.1f}%</div>
                            </div>
-                           <div style='flex:1; background:#0f172a; padding:20px; border-radius:10px; border:1px solid #334151; text-align:center;'>
+                           <div style='flex:1; min-width: 150px; background:#0f172a; padding:20px; border-radius:10px; border:1px solid #334151; text-align:center;'>
                                <div style='color:#94a3b8; font-size:0.9rem;'>Total Akumulasi Cuan</div>
                                <div style='color:#38bdf8; font-size:2rem; font-weight:bold;'>{'+' if total_profit > 0 else ''}{total_profit:.2f}%</div>
                            </div>
                         </div>"""
                         st.markdown(html_bt, unsafe_allow_html=True)
-                        st.success("✅ Simulasi Selesai! Angka di atas menunjukkan cuan/rugi bersih jika Bosku disiplin menggunakan indikator sistem pada saham ini selama setahun ke belakang.")
+                        st.success("✅ Simulasi Selesai! Angka di atas menunjukkan cuan/rugi bersih jika disiplin menggunakan indikator.")
                     else:
                         st.warning("Tidak ada sinyal beli yang tervalidasi dalam 1 tahun terakhir.")
                 else:

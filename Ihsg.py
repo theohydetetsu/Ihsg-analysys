@@ -10,7 +10,7 @@ import streamlit.components.v1 as components
 # ==========================================
 # --- KONFIGURASI HALAMAN ---
 # ==========================================
-st.set_page_config(page_title="HOLY GRAIL V31.1 - Bulletproof", layout="wide")
+st.set_page_config(page_title="HOLY GRAIL V32 - SOP & Rulebook", layout="wide")
 
 st.markdown("""<style>
 .stApp, [data-testid="stAppViewContainer"] {background-color: #030712 !important;}
@@ -32,13 +32,16 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
 p, span, li, div.stMarkdown, .stText {font-size: 0.85rem !important; line-height: 1.4 !important;}
 hr {margin-top: 0.3rem; margin-bottom: 0.3rem; border-color: #1e293b;}
 .dataframe {background-color: #0f172a !important; color: #f3f4f6 !important; border-color: #334155 !important;}
+
+/* STYLING EXPANDER PANDUAN */
+.streamlit-expanderHeader {background-color: #1e3a8a !important; color: white !important; border-radius: 8px !important; font-weight: bold !important;}
 </style>""", unsafe_allow_html=True)
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', unsafe_allow_html=True)
 
 # ==========================================
-# --- PANEL KONTROL V31.1 (5 KOLOM) ---
+# --- PANEL KONTROL V32 (5 KOLOM) ---
 # ==========================================
-st.markdown("### ⚙ PANEL KONTROL (V31.1 - BULLETPROOF SCALPING)")
+st.markdown("### ⚙ PANEL KONTROL (V32 - WITH TRADING SOP)")
 
 col_in1, col_in2, col_in3, col_in4, col_in5 = st.columns(5)
 with col_in1:
@@ -58,7 +61,8 @@ st.markdown("---")
 
 is_scalping = "Scalping" in timeframe_input
 yf_interval = "15m" if is_scalping else "1d"
-tv_interval = "15" if is_scalping else "D"
+# TradingView dipaksa tetap Harian agar tidak error
+tv_interval = "D" 
 
 if "NET BUY" in status_asing: asing_label = "<span style='color:#4ade80; font-weight:bold;'>NET BUY 🟢</span>"
 elif "NET SELL" in status_asing: asing_label = "<span style='color:#f87171; font-weight:bold;'>NET SELL 🔴</span>"
@@ -99,7 +103,7 @@ def get_ihsg_status():
 ihsg_text, ihsg_color = get_ihsg_status()
 
 # ==========================================
-# --- MESIN KALKULASI DEWA V31.1 ---
+# --- MESIN KALKULASI DEWA V32 ---
 # ==========================================
 @st.cache_data(ttl=60)
 def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
@@ -362,6 +366,41 @@ with col_h4:
 </div>"""
     st.markdown(html_execution, unsafe_allow_html=True)
 
+# ==========================================
+# --- BUKU SAKU DEWA (SOP TRADING V32) ---
+# ==========================================
+st.markdown("<br>", unsafe_allow_html=True)
+with st.expander("📖 BUKU SAKU DEWA (Klik untuk membaca SOP & Aturan Main Eksekusi)"):
+    st.markdown("""
+    <div style='padding: 10px; background: #0f172a; border-radius: 8px; border-left: 4px solid #3b82f6;'>
+    <h4 style='color: #38bdf8; margin-bottom: 15px;'>SOP (Standard Operating Procedure) Eksekusi Aplikasi Holy Grail:</h4>
+    
+    <p><strong>🔥 1. CARA MEMBACA SKOR UTAMA (Bintang):</strong></p>
+    <ul>
+        <li>🌟 <strong>Skor 12 - 15 (GOD MODE):</strong> Sinyal langka dan terkuat! Artinya Bandar sedang akumulasi, Asing masuk, dan Teknikal mendukung. <strong>EKSEKUSI:</strong> Boleh <em>Hajar Kanan (Beli Langsung)</em> dengan Lot maksimal yang disarankan sistem.</li>
+        <li>⭐ <strong>Skor 8 - 11 (STRONG BUY):</strong> Sinyal beli yang bagus. <strong>EKSEKUSI:</strong> Wajib cek kotak <code>R:R Ratio</code> (Risk-Reward). Jika R:R di atas <strong>1 : 1.5</strong>, silakan beli. Jika R:R jelek (contoh 1:0.3), lebih baik <strong>ANTRE BAWAH</strong> di area Support/Fibo terdekat.</li>
+        <li>🟡 <strong>Skor 5 - 7 (HOLD / WAIT):</strong> Sinyal nanggung (Sideways/Ragu). <strong>EKSEKUSI:</strong> Jangan dibeli dulu. Masukkan ke <em>Watchlist</em>. Biarkan market dan bandar menentukan arahnya, baru kita menumpang.</li>
+        <li>🔴 <strong>Skor < 5 (SELL / AVOID):</strong> Saham sedang didistribusi atau tren hancur. <strong>EKSEKUSI:</strong> Tinggalkan! Jangan tangkap pisau jatuh walaupun harganya terlihat murah.</li>
+    </ul>
+
+    <hr style='border-color: #334151;'>
+    <p><strong>🚨 2. TIGA TANDA BAHAYA (RED FLAGS):</strong><br>
+    <em>Meskipun Skor menunjukkan GOD MODE, <strong>BATALKAN PEMBELIAN</strong> jika salah satu dari 3 hal ini terjadi:</em></p>
+    <ol>
+        <li><strong>RSI Pucuk (> 85):</strong> Muncul tulisan merah "JANGAN HK (Pucuk)" di Final Execution. Harga sudah terlalu mahal dan sangat rawan diguyur turun. Tunggu koreksi.</li>
+        <li><strong>AWAS DIVIDEND TRAP:</strong> Muncul teks merah kedap-kedip. Artinya saham ini baru saja/akan membagikan dividen. Biasanya setelah <em>Cum-Date</em>, harga akan dibanting ARB. Hindari!</li>
+        <li><strong>Bandar Distribusi Besar:</strong> Jika di Kotak 3 tertulis "Distribusi Besar", artinya bandar institusi sedang jualan pelan-pelan ke investor ritel. Jangan mau jadi penadah barang buangan.</li>
+    </ol>
+    
+    <hr style='border-color: #334151;'>
+    <p><strong>⚔️ 3. CARA MENGGUNAKAN MODE SCALPING (15 MENIT):</strong></p>
+    <ul>
+        <li>Gunakan mode ini <strong>HANYA</strong> jika Bosku punya waktu luang untuk memantau layar.</li>
+        <li>Targetnya adalah cuan tipis dan cepat (1% - 3%) lalu kabur. Jangan di-<em>hold</em> sampai berhari-hari.</li>
+        <li>Sangat direkomendasikan disiplin menekan tombol Jual / <em>Cut Loss</em> jika harga menjebol batas Stop Loss yang tertera di layar.</li>
+    </ul>
+    </div>
+    """, unsafe_allow_html=True)
 st.divider()
 
 # ==========================================
@@ -378,8 +417,11 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
+if is_scalping:
+    st.info("ℹ️ Mode Scalping: Analisa kotak di bawah dihitung menggunakan timeframe 15 menit. (Note: Gambar Chart TradingView tetap Harian/D karena limitasi gratis BEI).")
+
 components.html(f"""
-<div style="border-radius: 10px; border: 1px solid #334151; overflow: hidden; background: #0f172a; margin-bottom: 10px; height: 380px;">
+<div style="border-radius: 10px; border: 1px solid #334151; overflow: hidden; background: #0f172a; margin-bottom: 10px; height: 350px;">
     <div id="tradingview_chart" style="height: 100%; width: 100%;"></div>
     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
     <script>
@@ -397,7 +439,7 @@ components.html(f"""
     }});
     </script>
 </div>
-""", height=390)
+""", height=360)
 
 # ==========================================
 # --- 3. 3 KOTAK SENJATA UTAMA ---

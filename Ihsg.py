@@ -10,7 +10,7 @@ import streamlit.components.v1 as components
 # ==========================================
 # --- KONFIGURASI HALAMAN ---
 # ==========================================
-st.set_page_config(page_title="HOLY GRAIL V34 - Ultimate Sniper", layout="wide")
+st.set_page_config(page_title="HOLY GRAIL V34.1 - Ultimate Sniper", layout="wide")
 
 st.markdown("""<style>
 .stApp, [data-testid="stAppViewContainer"] {background-color: #030712 !important;}
@@ -40,9 +40,9 @@ hr {margin-top: 0.4rem; margin-bottom: 0.4rem; border-color: #1e293b;}
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', unsafe_allow_html=True)
 
 # ==========================================
-# --- PANEL KONTROL V34 (5 KOLOM) ---
+# --- PANEL KONTROL V34.1 (5 KOLOM) ---
 # ==========================================
-st.markdown("### ⚙ PANEL KONTROL (V34 - MATA ELANG & CAMARILLA)")
+st.markdown("### ⚙ PANEL KONTROL (V34.1 - MATA ELANG & CAMARILLA)")
 
 col_in1, col_in2, col_in3, col_in4, col_in5 = st.columns(5)
 with col_in1:
@@ -76,8 +76,36 @@ def safe_int(val):
     try: return int(float(val)) if val is not None and not pd.isna(val) else 0
     except: return 0
 
+# --- DATABASE SEKTOR LOKAL (Dikembalikan) ---
+LOCAL_SECTOR_DB = {
+    "BBCA": ("Financials", "Banks"), "BBRI": ("Financials", "Banks"), "BMRI": ("Financials", "Banks"), "BBNI": ("Financials", "Banks"),
+    "TLKM": ("Communication Services", "Telecom"), "GOTO": ("Technology", "Software"), "ASII": ("Consumer Cyclicals", "Auto"),
+    "ADRO": ("Energy", "Coal"), "PTBA": ("Energy", "Coal"), "ITMG": ("Energy", "Coal"), "UNTR": ("Industrials", "Heavy Mach"),
+    "ICBP": ("Consumer Defensive", "Food"), "INDF": ("Consumer Defensive", "Food"), "UNVR": ("Consumer Defensive", "Household"),
+    "AMMN": ("Basic Materials", "Copper/Gold"), "BREN": ("Utilities", "Renewable"), "BRPT": ("Basic Materials", "Chemicals"),
+    "PGEO": ("Utilities", "Renewable"), "CUAN": ("Energy", "Coal"), "VIVA": ("Communication Services", "Media"),
+    "DWGL": ("Energy", "Oil & Gas"), "IATA": ("Energy", "Coal")
+}
+
+# --- PELACAK IHSG (Dikembalikan) ---
+@st.cache_data(ttl=300)
+def get_ihsg_status():
+    try:
+        ihsg = yf.Ticker("^JKSE")
+        hist = ihsg.history(period="5d")
+        if len(hist) >= 2:
+            prev_close, curr_price = hist['Close'].iloc[-2], hist['Close'].iloc[-1]
+            change_pct = ((curr_price - prev_close) / prev_close) * 100
+            if change_pct > 0.3: return f"🟢 IHSG AMAN (+{change_pct:.2f}%)", "#4ade80"
+            elif change_pct < -0.3: return f"🔴 IHSG RAWAN ({change_pct:.2f}%)", "#f87171"
+            else: return f"🟡 IHSG SIDEWAYS ({change_pct:.2f}%)", "#fbbf24"
+        return "⚪ IHSG OFFLINE", "#94a3b8"
+    except: return "⚪ IHSG ERROR", "#94a3b8"
+
+ihsg_text, ihsg_color = get_ihsg_status()
+
 # ==========================================
-# --- MESIN KALKULASI DEWA V34 ---
+# --- MESIN KALKULASI DEWA V34.1 ---
 # ==========================================
 @st.cache_data(ttl=60)
 def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
@@ -93,8 +121,14 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
         except: info = {}
         
         clean_ticker = ticker_symbol.replace('.JK', '')
-        sector = info.get('sector', 'Market')
-        industry = info.get('industry', 'Indonesia')
+        sector = info.get('sector')
+        industry = info.get('industry')
+        
+        if (sector is None or sector == 'N/A' or sector == '') and clean_ticker in LOCAL_SECTOR_DB:
+            sector, industry = LOCAL_SECTOR_DB[clean_ticker]
+        else:
+            sector = sector if sector else "Market"
+            industry = industry if industry else "Indonesia"
             
         div_warning = False
         if not is_screener and interval == "1d":
@@ -289,7 +323,7 @@ rr_ratio = round((r_val - p_val) / risk_per_share, 1) if risk_per_share > 0 else
 div_html = f"<div style='color:#f87171; font-weight:900; font-size:0.75rem; text-align:center; animation: blinker 1.5s linear infinite;'>⚠️ AWAS DIVIDEND TRAP!</div>" if data.get('div_warning') else ""
 
 if rsi_display >= 85: entry_val, border_glow, accent_color = f"<span style='color:#f87171; font-weight:bold;'>⚠️ JANGAN HK</span>", "0 0 15px rgba(248, 113, 113, 0.4)", "#f87171" 
-elif rr_ratio < 0.5 and score >= 8: entry_val, border_glow, accent_color = f"<span style='color:#fbbf24; font-weight:bold;'>⚠️️ ANTRE BAWAH</span>", "0 0 15px rgba(251, 191, 36, 0.4)", "#fbbf24" 
+elif rr_ratio < 0.5 and score >= 8: entry_val, border_glow, accent_color = f"<span style='color:#fbbf24; font-weight:bold;'>⚠ ANTRE BAWAH</span>", "0 0 15px rgba(251, 191, 36, 0.4)", "#fbbf24" 
 elif score >= 8: entry_val, border_glow, accent_color = f"<span style='color:#4ade80; font-weight:bold;'>Rp{p_val} (HAJAR)</span>", "0 0 15px rgba(74, 222, 128, 0.4)", "#4ade80" 
 else: entry_val, border_glow, accent_color = "<span style='color:#fbbf24; font-weight:bold;'>WAIT / PANTTAU</span>", "0 0 15px rgba(251, 191, 36, 0.4)", "#fbbf24" 
 
@@ -302,6 +336,9 @@ st.markdown(f"""
         <div style='display:inline-block; background:rgba(255,255,255,0.05); border:1px solid #334151; padding:2px 8px; border-radius:6px; margin-bottom:6px;'><span style='color:{ihsg_color}; font-size:0.75rem; font-weight:bold;'>{ihsg_text}</span></div>
         <div style="display: flex; align-items: center; gap: 8px;"><img src="https://assets.parqet.com/logos/symbol/{ticker_input}.JK?format=png" width="40" height="40" style="border-radius: 8px; background: white; padding: 2px;" onerror="this.style.display='none'"><div style='color:#f3f4f6; font-size: clamp(1.5rem, 3vw, 2.5rem); font-weight: 900; line-height: 1;'>{ticker_input}</div></div>
         <div style='color:#94a3b8; font-size:0.85rem; font-weight:bold; margin-top:2px;'>{data.get('name', '')}</div>
+        <div style='font-size: 0.75rem; color: #64748b; margin-top: 4px; border-left: 2px solid #3b82f6; padding-left: 6px;'>
+            Sector: <span style='color:#e2e8f0; font-weight:600;'>{data.get('sector', 'N/A')}</span><br>Industry: <span style='color:#e2e8f0; font-weight:600;'>{data.get('industry', 'N/A')}</span>
+        </div>
     </div>
     <div style='flex:1; min-width:150px; text-align:center;'>
         <div style='color:#fbbf24; font-size: 2rem; font-weight: 900;'>🌟 {score}.0<span style='font-size:1rem; color:#64748b;'>/15</span></div>
@@ -333,13 +370,13 @@ st.markdown(f"""
 </div>""", unsafe_allow_html=True)
 
 # ==========================================
-# --- BUKU SAKU DEWA (SOP TRADING V34) ---
+# --- BUKU SAKU DEWA (SOP TRADING V34.1) ---
 # ==========================================
 st.markdown("<br>", unsafe_allow_html=True)
 with st.expander("📖 BUKU SAKU DEWA (Klik untuk membaca SOP & Aturan Main Eksekusi)"):
     st.markdown("""
     <div style='padding: 10px; background: #0f172a; border-radius: 8px; border-left: 4px solid #3b82f6; font-size: 0.85rem;'>
-    <h4 style='color: #38bdf8; margin-bottom: 10px; font-size: 1rem;'>SOP Eksekusi Holy Grail V34:</h4>
+    <h4 style='color: #38bdf8; margin-bottom: 10px; font-size: 1rem;'>SOP Eksekusi Holy Grail V34.1:</h4>
     <p><strong>🔥 1. CARA MEMBACA SKOR:</strong></p>
     <ul style='padding-left: 20px;'>
         <li>🌟 <strong>12-15 (GOD MODE):</strong> Sinyal terkuat! Boleh <em>Hajar Kanan</em>.</li>
@@ -369,7 +406,6 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# BAR BARU: AUTO PIVOT CAMARILLA
 st.markdown(f"""
 <div style='background: linear-gradient(90deg, #3730a3, #0f172a); border: 1px solid #6366f1; padding: 10px; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.4); display: flex; flex-wrap: wrap; gap: 5px; justify-content: space-around; align-items: center;'>
     <div style='color:#a5b4fc; font-weight:bold; font-size:0.8rem; text-transform:uppercase; text-align: center; width: 100%; border-bottom: 1px dashed #4338ca; padding-bottom: 5px; margin-bottom: 5px;'>🤖 Auto-Pivot Camarilla (Khusus Copet Scalping)</div>
@@ -428,7 +464,6 @@ c1 = f"""<div style='display:flex; justify-content: space-between; align-items:c
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>EPS (Laba):</span> <strong style='color:#f3f4f6;'>{data.get('eps_str', 'N/A')}</strong></div>"""
 b1 = render_luxury_box("💼 1. FUNDAMENTAL", c1, f"STATUS: {data.get('stat_funda', 'N/A')}", data.get('funda_bg', ''))
 
-# MATA ELANG DI SUNTIKKAN KE KOTAK 2 (TEKNIKAL)
 c2 = f"""<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8; flex-shrink: 0;'>Pola Mata Elang:</span> <strong style='color:{data.get('candle_color', '#fff')}; text-align:right;'>{data.get('candle_pattern', 'N/A')}</strong></div>
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8; flex-shrink: 0;'>Posisi Fibo:</span> <strong style='color:#f3f4f6; text-align:right;'>{data.get('fibo_stat', 'N/A')}</strong></div>
 <hr style='margin: 2px 0; border: 0.5px dashed #334151;'>

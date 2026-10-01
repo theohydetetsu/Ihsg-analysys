@@ -10,7 +10,7 @@ import streamlit.components.v1 as components
 # ==========================================
 # --- KONFIGURASI HALAMAN ---
 # ==========================================
-st.set_page_config(page_title="HOLY GRAIL V36 - Foolproof Edition", layout="wide")
+st.set_page_config(page_title="HOLY GRAIL V36.2 - Smart Fundamental", layout="wide")
 
 st.markdown("""<style>
 .stApp, [data-testid="stAppViewContainer"] {background-color: #030712 !important;}
@@ -36,28 +36,21 @@ hr {margin-top: 0.4rem; margin-bottom: 0.4rem; border-color: #1e293b;}
 
 /* STYLING EXPANDER PANDUAN */
 .streamlit-expanderHeader {background-color: #1e3a8a !important; color: white !important; border-radius: 8px !important; font-weight: bold !important;}
-
-/* ANIMASI KEDIP UNTUK ALARM */
 @keyframes blinker { 50% { opacity: 0.3; } }
 </style>""", unsafe_allow_html=True)
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', unsafe_allow_html=True)
 
 # ==========================================
-# --- PANEL KONTROL V36 (5 KOLOM) ---
+# --- PANEL KONTROL V36.2 ---
 # ==========================================
-st.markdown("### ⚙ PANEL KONTROL (V36 - SAFETY LOCK EDITION)")
+st.markdown("### ⚙ PANEL KONTROL (V36.2 - SMART RADAR)")
 
 col_in1, col_in2, col_in3, col_in4, col_in5 = st.columns(5)
-with col_in1:
-    ticker_input = st.text_input("🔍 1. Kode Saham:", "BBCA").upper().strip()
-with col_in2:
-    status_asing = st.selectbox("🦅 2. Asing Flow:", ["Asing NET BUY (Masuk Besar)", "Asing Netral / Mixed", "Asing NET SELL (Keluar)"])
-with col_in3:
-    modal_input = st.number_input("💰 3. Modal Trading (Rp):", min_value=100000, value=10000000, step=1000000)
-with col_in4:
-    risiko_input = st.selectbox("🛡️ 4. Toleransi Risiko:", ["1% dari Modal", "2% dari Modal", "3% dari Modal", "5% dari Modal"], index=1)
-with col_in5:
-    timeframe_input = st.selectbox("⏱️ 5. Mode Trading:", ["Swing (Harian)", "Scalping (15 Menit)"])
+with col_in1: ticker_input = st.text_input("🔍 1. Kode Saham:", "BBCA").upper().strip()
+with col_in2: status_asing = st.selectbox("🦅 2. Asing Flow:", ["Asing NET BUY (Masuk Besar)", "Asing Netral / Mixed", "Asing NET SELL (Keluar)"])
+with col_in3: modal_input = st.number_input("💰 3. Modal Trading (Rp):", min_value=100000, value=10000000, step=1000000)
+with col_in4: risiko_input = st.selectbox("🛡️ 4. Toleransi Risiko:", ["1% dari Modal", "2% dari Modal", "3% dari Modal", "5% dari Modal"], index=1)
+with col_in5: timeframe_input = st.selectbox("⏱️ 5. Mode Trading:", ["Swing (Harian)", "Scalping (15 Menit)"])
 
 ticker_yf = f"{ticker_input}.JK"
 ticker_tv = f"IDX:{ticker_input}"
@@ -86,11 +79,9 @@ LOCAL_SECTOR_DB = {
     "ADRO": ("Energy", "Coal"), "PTBA": ("Energy", "Coal"), "ITMG": ("Energy", "Coal"), "UNTR": ("Industrials", "Heavy Mach"),
     "ICBP": ("Consumer Defensive", "Food"), "INDF": ("Consumer Defensive", "Food"), "UNVR": ("Consumer Defensive", "Household"),
     "AMMN": ("Basic Materials", "Copper/Gold"), "BREN": ("Utilities", "Renewable"), "BRPT": ("Basic Materials", "Chemicals"),
-    "PGEO": ("Utilities", "Renewable"), "CUAN": ("Energy", "Coal"), "VIVA": ("Communication Services", "Media"),
-    "DWGL": ("Energy", "Oil & Gas"), "IATA": ("Energy", "Coal")
+    "PGEO": ("Utilities", "Renewable"), "CUAN": ("Energy", "Coal"), "VIVA": ("Communication Services", "Media")
 }
 
-# --- PELACAK IHSG ---
 @st.cache_data(ttl=300)
 def get_ihsg_status():
     try:
@@ -108,7 +99,7 @@ def get_ihsg_status():
 ihsg_text, ihsg_color = get_ihsg_status()
 
 # ==========================================
-# --- MESIN KALKULASI DEWA V36 ---
+# --- MESIN KALKULASI DEWA V36.2 ---
 # ==========================================
 @st.cache_data(ttl=60)
 def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
@@ -126,7 +117,6 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
         clean_ticker = ticker_symbol.replace('.JK', '')
         sector = info.get('sector')
         industry = info.get('industry')
-        
         if (sector is None or sector == 'N/A' or sector == '') and clean_ticker in LOCAL_SECTOR_DB:
             sector, industry = LOCAL_SECTOR_DB[clean_ticker]
         else:
@@ -193,7 +183,6 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
         cam_H, cam_L, cam_C_prev = hist_6m['High'].iloc[-2], hist_6m['Low'].iloc[-2], hist_6m['Close'].iloc[-2]
         cam_range = cam_H - cam_L
         if cam_range == 0: cam_range = cam_C_prev * 0.02
-        
         cam_h4 = cam_C_prev + (cam_range * 1.1 / 2)
         cam_h3 = cam_C_prev + (cam_range * 1.1 / 4)
         cam_l3 = cam_C_prev - (cam_range * 1.1 / 4)
@@ -202,7 +191,6 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
         # --- TEKNIKAL STANDARD ---
         sma20 = close.rolling(20).mean().iloc[-1] if len(close) >= 20 else close.iloc[-1]
         sma60 = close.rolling(60).mean().iloc[-1] if len(close) >= 60 else sma20
-        
         if latest_price > sma20 and latest_price > sma60: mtf_status, mtf_score, trend_col = "Uptrend (Markup)", 2, "#4ade80"
         elif latest_price < sma20 and latest_price < sma60: mtf_status, mtf_score, trend_col = "Downtrend (Markdown)", 0, "#f87171"
         else: mtf_status, mtf_score, trend_col = "Sideways", 1, "#fbbf24"
@@ -211,7 +199,6 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
         rs = (delta.where(delta > 0, 0)).rolling(window=14).mean() / (-delta.where(delta < 0, 0)).rolling(window=14).mean()
         rsi_val = (100 - (100 / (1 + rs))).iloc[-1]
         if pd.isna(rsi_val): rsi_val = 50
-        rsi_color = "#f87171" if rsi_val >= 70 else ("#4ade80" if rsi_val <= 30 else "#f3f4f6")
 
         exp1 = close.ewm(span=12, adjust=False).mean()
         exp2 = close.ewm(span=26, adjust=False).mean()
@@ -223,7 +210,6 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
 
         std20 = close.rolling(20).std().iloc[-1] if len(close) >= 20 else 1.0
         upper_bb, lower_bb = sma20 + (2 * std20), sma20 - (2 * std20)
-        
         if latest_price > upper_bb: bb_stat, bb_score = "Breakout Atas", 2
         elif latest_price < lower_bb: bb_stat, bb_score = "Jebol Bawah", 0
         else: bb_stat, bb_score = "Area Dalam Bands", 1
@@ -234,7 +220,6 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
         swing_high, swing_low = safe_num(hist_6m['High'].tail(60).max()), safe_num(hist_6m['Low'].tail(60).min())
         diff = swing_high - swing_low
         fibo_382, fibo_500, fibo_618 = swing_high - (0.382 * diff), swing_high - (0.500 * diff), swing_high - (0.618 * diff)
-        
         if latest_price >= fibo_382: fibo_stat, fibo_score = "Aman (>38.2%)", 1
         elif latest_price >= fibo_618: fibo_stat, fibo_score = "Golden Pocket", 1
         else: fibo_stat, fibo_score = "Jebol Mayor", 0
@@ -260,17 +245,53 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
         vol_ratio = (vol.iloc[-1] / vol_ma20) * 100 if vol_ma20 > 0 else 100
         vpa_stat, vpa_score = (f"Ledakan ({int(vol_ratio)}%)", 1) if vol_ratio > 150 else (f"Volume Normal", 0)
         
+        # --- PERHITUNGAN LIKUIDITAS BARU (V36.2) ---
+        avg_turnover = vol_ma20 * latest_price
+        if avg_turnover >= 5_000_000_000: # Di atas 5 Miliar / hari
+            liq_stat, liq_col = "Sangat Ramai (Aman)", "#4ade80"
+        elif avg_turnover >= 500_000_000: # 500 Juta - 5 Miliar
+            liq_stat, liq_col = "Wajar / Standar", "#fbbf24"
+        else:                             # Di bawah 500 Juta (Gorengan Sepi)
+            liq_stat, liq_col = "Sepi (Awas Guyuran)", "#f87171"
+
         if is_screener:
             return {"Ticker": clean_ticker, "Harga": safe_int(latest_price), "Bandar_Flow": auto_bandar, "Fase": mtf_status, "RSI": round(safe_num(rsi_val), 1)}
 
+        # --- PEMBARUAN TEKS FUNDAMENTAL (V36.2) ---
         pe_raw = safe_num(info.get('trailingPE'))
         pbv_raw = safe_num(info.get('priceToBook'))
         roe_raw = safe_num(info.get('returnOnEquity'))
         eps_raw = safe_num(info.get('trailingEps')) 
         
-        pe_str = f"<strong style='color:{'#4ade80' if 0<pe_raw<=15 else ('#f87171' if pe_raw>25 else '#fbbf24')};'>{pe_raw:.1f}x</strong>" if pe_raw > 0 else "N/A"
-        pbv_str = f"<strong style='color:{'#4ade80' if 0<pbv_raw<=1.5 else ('#f87171' if pbv_raw>3 else '#fbbf24')};'>{pbv_raw:.1f}x</strong>" if pbv_raw > 0 else "N/A"
-        roe_str = f"<strong style='color:{'#4ade80' if roe_raw>=0.15 else ('#f87171' if roe_raw<0 else '#fbbf24')};'>{roe_raw*100:.1f}%</strong>" if roe_raw != 0 else "N/A"
+        # Format PER Pintar
+        if pe_raw > 0:
+            if pe_raw <= 15: pe_label, pe_col = " (Murah)", "#4ade80"
+            elif pe_raw <= 25: pe_label, pe_col = " (Wajar)", "#fbbf24"
+            else: pe_label, pe_col = " (Mahal)", "#f87171"
+            pe_disp = f"{pe_raw:.1f}x" if pe_raw < 1000 else ">1000x"
+            pe_str = f"<strong style='color:{pe_col};'>{pe_disp}{pe_label}</strong>"
+        elif pe_raw < 0: pe_str = "<strong style='color:#f87171;'>Minus (Rugi)</strong>"
+        else: pe_str = "<strong style='color:#94a3b8;'>N/A (Cek LK)</strong>"
+
+        # Format PBV Pintar
+        if pbv_raw > 0:
+            if pbv_raw <= 1.5: pbv_label, pbv_col = " (Murah)", "#4ade80"
+            elif pbv_raw <= 3.0: pbv_label, pbv_col = " (Wajar)", "#fbbf24"
+            else: pbv_label, pbv_col = " (Mahal)", "#f87171"
+            pbv_disp = f"{pbv_raw:.1f}x" if pbv_raw < 1000 else ">1000x"
+            pbv_str = f"<strong style='color:{pbv_col};'>{pbv_disp}{pbv_label}</strong>"
+        elif pbv_raw < 0: pbv_str = "<strong style='color:#f87171;'>Defisit Ekuitas</strong>"
+        else: pbv_str = "<strong style='color:#94a3b8;'>N/A</strong>"
+
+        # Format ROE Pintar
+        if roe_raw != 0 and not pd.isna(roe_raw):
+            roe_pct = roe_raw * 100
+            if roe_pct >= 15: roe_label, roe_col = " (Sangat Bagus)", "#4ade80"
+            elif roe_pct >= 5: roe_label, roe_col = " (Wajar)", "#fbbf24"
+            else: roe_label, roe_col = " (Jelek/Rugi)", "#f87171"
+            roe_disp = f"{roe_pct:.1f}%" if abs(roe_pct) < 1000 else ">1000%"
+            roe_str = f"<strong style='color:{roe_col};'>{roe_disp}{roe_label}</strong>"
+        else: roe_str = "<strong style='color:#94a3b8;'>N/A</strong>"
 
         f_score = sum([pe_raw>0 and pe_raw<25, pbv_raw>0 and pbv_raw<4, roe_raw>0.05])
         stat_funda, funda_bg = ("SEHAT & LAYAK", "rgba(74, 222, 128, 0.15)") if f_score >= 2 else ("BERISIKO/MAHAL", "rgba(248, 113, 113, 0.15)")
@@ -288,16 +309,18 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
             'stat_funda': stat_funda, 'funda_bg': funda_bg, 'stat_tech': stat_tech, 'tech_bg': tech_bg, 
             'stat_flow': "Akumulasi Masif" if bandar_score==3 else ("Distribusi" if bandar_score==0 else "Market Mixed"), 
             'flow_bg': "rgba(74, 222, 128, 0.15)" if bandar_score==3 else ("rgba(248, 113, 113, 0.15)" if bandar_score==0 else "rgba(251, 191, 36, 0.15)"),
-            'mc_str': f"{safe_num(info.get('marketCap')) / 1e12:.2f} T", 'ara_price': ara_price, 'arb_price': arb_price, 
+            'mc_str': f"{safe_num(info.get('marketCap')) / 1e12:.2f} T" if safe_num(info.get('marketCap'))>0 else "N/A", 
+            'ara_price': ara_price, 'arb_price': arb_price, 
             'auto_bandar': auto_bandar, 'bandar_color': bandar_color, 'bandar_score': bandar_score, 'div_warning': div_warning, 
             'fibo_100': swing_high, 'fibo_0': swing_low, 'fibo_618': fibo_618, 'fibo_500': fibo_500, 'fibo_382': fibo_382,
-            'candle_pattern': candle_pattern, 'candle_color': candle_color, 'cam_h4': cam_h4, 'cam_h3': cam_h3, 'cam_c': cam_C_prev, 'cam_l3': cam_l3, 'cam_l4': cam_l4
+            'candle_pattern': candle_pattern, 'candle_color': candle_color, 'cam_h4': cam_h4, 'cam_h3': cam_h3, 'cam_c': cam_C_prev, 'cam_l3': cam_l3, 'cam_l4': cam_l4,
+            'liq_stat': liq_stat, 'liq_col': liq_col
         }
     except Exception as e: return {"error": str(e)}
 
 data = get_stock_data(ticker_yf, interval=yf_interval)
 if data is None or isinstance(data, dict) and "error" in data:
-    st.error(f"❌ Terjadi kesalahan: Data historis scalping mungkin tidak tersedia di server Yahoo.")
+    st.error(f"❌ Terjadi kesalahan: Data historis mungkin tidak tersedia di server YFinance.")
     st.stop()
 
 p_val = safe_int(data.get('price'))
@@ -346,12 +369,12 @@ max_lot = int((max_loss_rp / risk_per_share) / 100) if pd.notna(max_loss_rp / ri
 if max_lot < 1: max_lot = 0
 rr_ratio = round((target_tp - p_val) / risk_per_share, 1) if risk_per_share > 0 else 0
 
-# --- SAFETY LOCK ALARMS (V36) ---
+# --- SAFETY LOCK ALARMS ---
 warnings_list = []
 if data.get('div_warning'): warnings_list.append("⚠️ AWAS DIVIDEND TRAP!")
 if data.get('bandar_score') == 0: warnings_list.append("🩸 BANDAR DISTRIBUSI (AWAS GUYURAN)")
 if rsi_display >= 75: warnings_list.append("🔥 RSI OVERBOUGHT (RAWAN PUCUK)")
-if data.get('stat_funda') == "MURNI TEKNIKAL": warnings_list.append("🎲 SAHAM GORENGAN (HIGH RISK)")
+if data.get('stat_funda') == "MURNI TEKNIKAL" or data.get('liq_stat') == "Sepi (Awas Guyuran)": warnings_list.append("🎲 SAHAM GORENGAN / SEPI (HIGH RISK)")
 if data.get('candle_color') == "#f87171": warnings_list.append("🐻 POLA BEARISH (HARGA MAU TURUN)")
 
 warning_html = ""
@@ -365,7 +388,6 @@ if rsi_display >= 85:
 elif rr_ratio < 0.5 and score >= 8: 
     entry_val, border_glow, accent_color = f"<span style='color:#fbbf24; font-weight:bold;'>⚠ ANTRE (Rp{antre_ideal})</span>", "0 0 15px rgba(251, 191, 36, 0.4)", "#fbbf24" 
 elif score >= 8: 
-    # Jika skor bagus tapi ada red flag bandar jualan atau gorengan
     if warnings_list:
         entry_val, border_glow, accent_color = f"<span style='color:#fbbf24; font-weight:bold;'>Rp{p_val} (HAJAR TAPI WASPADA)</span>", "0 0 15px rgba(251, 191, 36, 0.4)", "#fbbf24"
     else:
@@ -400,7 +422,6 @@ st.markdown(f"""
     </div>
 </div>""", unsafe_allow_html=True)
 
-# KOTAK EKSEKUSI (Dengan RED FLAG RADAR di dalamnya!)
 rr_bg = "linear-gradient(90deg, #1e3a8a, #3b82f6)" if rr_ratio >= 1.5 else ("linear-gradient(90deg, #991b1b, #ef4444)" if rr_ratio < 0.5 else "linear-gradient(90deg, #78350f, #d97706)")
 st.markdown(f"""
 <div style='background: linear-gradient(145deg, #0f172a, #020617); border: 1px solid {accent_color}; padding: 10px; border-radius: 12px; box-shadow: {border_glow}; position: relative; overflow: hidden; margin-top: 8px; width: 100%;'>
@@ -413,36 +434,14 @@ st.markdown(f"""
 <div style='display:flex; justify-content: space-between; align-items:center; font-size: 0.85rem; border-bottom: 1px dashed #334151; padding-bottom: 2px;'><span style='color:#94a3b8;'>Stop Loss Limit</span> <span style='color:#f87171; font-weight:900;'>Rp{target_sl}</span></div>
 <div style='display:flex; justify-content: space-between; align-items:center; font-size: 0.85rem; border-bottom: 1px dashed #334151; padding-bottom: 2px;'><span style='color:#94a3b8;'>Maks Beli Aman</span> <span style='color:#4ade80; font-weight:900;'>{max_lot} LOT</span></div>
 </div>
-<div style='background: {rr_bg}; color:white; padding:4px; border-radius:4px; text-align:center; font-weight:900; font-size:0.75rem; margin-top: 8px;'>⚖️️ R:R = 1 : {rr_ratio}</div>
+<div style='background: {rr_bg}; color:white; padding:4px; border-radius:4px; text-align:center; font-weight:900; font-size:0.75rem; margin-top: 8px;'>⚖ R:R = 1 : {rr_ratio}</div>
 </div>""", unsafe_allow_html=True)
-
-# ==========================================
-# --- BUKU SAKU DEWA (SOP TRADING V36) ---
-# ==========================================
-st.markdown("<br>", unsafe_allow_html=True)
-with st.expander("📖 BUKU SAKU DEWA (Klik untuk membaca SOP & Aturan Main Eksekusi)"):
-    st.markdown("""
-    <div style='padding: 10px; background: #0f172a; border-radius: 8px; border-left: 4px solid #3b82f6; font-size: 0.85rem;'>
-    <h4 style='color: #38bdf8; margin-bottom: 10px; font-size: 1rem;'>SOP Eksekusi Holy Grail V36 (Safety Lock):</h4>
-    <p><strong>🔥 1. CARA MEMBACA KOTAK EKSEKUSI (ANTI JEBAKAN):</strong></p>
-    <ul style='padding-left: 20px;'>
-        <li>Jika ada <strong>KOTAK MERAH BERKEDIP</strong> di dalam Final Execution (seperti <em>Bandar Distribusi</em> atau <em>Saham Gorengan</em>), batalkan atau kurangi Lot pembelian secara drastis, meskipun skor bintangnya tinggi.</li>
-        <li>Tulisan <strong>"HAJAR TAPI WASPADA"</strong> berarti indikator teknikal bagus, tapi ada sentimen buruk di balik layar.</li>
-    </ul>
-    <p><strong>🎯 2. MODE EKSEKUSI (OTOMATIS):</strong></p>
-    <ul style='padding-left: 20px;'>
-        <li><strong>Mode Scalping:</strong> Target <em>Take Profit</em> dan <em>Stop Loss</em> akan otomatis menggunakan angka <strong>Pivot Camarilla (H3 & L4)</strong>. Cocok untuk copet cepat intraday.</li>
-        <li><strong>Mode Swing:</strong> Kotak Final Execution otomatis menggunakan angka Resisten/Support Mayor.</li>
-    </ul>
-    </div>
-    """, unsafe_allow_html=True)
-st.divider()
 
 # ==========================================
 # --- 2. RADAR FIBO & CAMARILLA ---
 # ==========================================
 st.markdown(f"""
-<div style='background: linear-gradient(90deg, #1e3a8a, #0f172a); border: 1px solid #3b82f6; padding: 10px; border-radius: 8px; margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 5px; justify-content: space-around; align-items: center;'>
+<div style='background: linear-gradient(90deg, #1e3a8a, #0f172a); border: 1px solid #3b82f6; padding: 10px; border-radius: 8px; margin-top: 12px; margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 5px; justify-content: space-around; align-items: center;'>
     <div style='color:#93c5fd; font-weight:bold; font-size:0.8rem; text-transform:uppercase; text-align: center; width: 100%; border-bottom: 1px dashed #334151; padding-bottom: 5px; margin-bottom: 5px;'>🎯 Radar Fibo (Tren Ayunan)</div>
     <div style='text-align:center; flex: 1; min-width: 80px;'><div style='font-size:0.65rem; color:#94a3b8;'>100% (High)</div><strong style='color:#f3f4f6; font-size:0.85rem;'>Rp{safe_int(data.get('fibo_100', 0))}</strong></div>
     <div style='text-align:center; flex: 1; min-width: 80px;'><div style='font-size:0.65rem; color:#4ade80;'>61.8% (Golden)</div><strong style='color:#4ade80; font-size:0.85rem;'>Rp{safe_int(data.get('fibo_618', 0))}</strong></div>
@@ -464,7 +463,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 components.html(f"""
-<div style="border-radius: 10px; border: 1px solid #334151; overflow: hidden; background: #0f172a; margin-bottom: 10px; height: 350px;">
+<div style="border-radius: 10px; border: 1px solid #334151; overflow: hidden; background: #0f172a; margin-bottom: 10px; height: 480px;">
     <div id="tradingview_chart" style="height: 100%; width: 100%;"></div>
     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
     <script>
@@ -478,11 +477,15 @@ components.html(f"""
         "locale": "id",
         "hide_top_toolbar": false,
         "container_id": "tradingview_chart",
-        "studies": ["Volume@tv-basicstudies", "MACD@tv-basicstudies"]
+        "studies": [
+            "Volume@tv-basicstudies",
+            {{"id": "MASimple@tv-basicstudies", "inputs": {{"length": 21}}}},
+            {{"id": "MASimple@tv-basicstudies", "inputs": {{"length": 50}}}}
+        ]
     }});
     </script>
 </div>
-""", height=360)
+""", height=490)
 
 # ==========================================
 # --- 3. KOTAK SENJATA UTAMA (RESPONSIVE) ---
@@ -503,10 +506,11 @@ def render_luxury_box(title, content, badge_text, badge_style):
     </div>
 </div>"""
 
+# --- KOTAK 1 DIUBAH (V36.2) ---
 c1 = f"""<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Market Cap:</span> <strong style='color:#f3f4f6;'>{data.get('mc_str', 'N/A')}</strong></div>
-<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>PER (Valuasi):</span> <div>{data.get('pe_str', 'N/A')}</div></div>
-<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>PBV (Aset):</span> <div>{data.get('pbv_str', 'N/A')}</div></div>
-<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>ROE (Kinerja):</span> <div>{data.get('roe_str', 'N/A')}</div></div>
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>PER (Valuasi):</span> <div style='text-align:right;'>{data.get('pe_str', 'N/A')}</div></div>
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>PBV (Aset):</span> <div style='text-align:right;'>{data.get('pbv_str', 'N/A')}</div></div>
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>ROE (Kinerja):</span> <div style='text-align:right;'>{data.get('roe_str', 'N/A')}</div></div>
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>EPS (Laba):</span> <strong style='color:#f3f4f6;'>{data.get('eps_str', 'N/A')}</strong></div>"""
 b1 = render_luxury_box("💼 1. FUNDAMENTAL", c1, f"STATUS: {data.get('stat_funda', 'N/A')}", data.get('funda_bg', ''))
 
@@ -518,12 +522,13 @@ c2 = f"""<div style='display:flex; justify-content: space-between; align-items:c
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Bollinger B.:</span> <strong style='color:#4ade80; text-align:right;'>{data.get('bb_stat', 'N/A')}</strong></div>"""
 b2 = render_luxury_box("📈 2. TEKNIKAL & AI", c2, f"KESIMPULAN: {data.get('stat_tech', 'N/A')}", data.get('tech_bg', ''))
 
+# --- KOTAK 3 DIUBAH (V36.2) LIKUIDITAS BARU ---
 c3 = f"""<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8; flex-shrink: 0;'>AI Bandar:</span> <strong style='color:{data.get('bandar_color', '#fff')}; text-align:right;'>{data.get('auto_bandar', 'N/A')}</strong></div>
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8; flex-shrink: 0;'>Asing Flow:</span> <div>{asing_label}</div></div>
 <hr style='margin: 2px 0; border: 0.5px dashed #334151;'>
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Volume (VPA):</span> <strong style='color:#4ade80; text-align:right;'>{data.get('vpa_stat', 'N/A')}</strong></div>
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Volatilitas ATR:</span> <strong style='color:#4ade80; text-align:right;'>Terpantau</strong></div>
-<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Orderbook:</span> <strong style='color:#f3f4f6; text-align:right;'>Likuid</strong></div>"""
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Likuiditas (Antrean):</span> <strong style='color:{data.get('liq_col', '#fff')}; text-align:right;'>{data.get('liq_stat', 'N/A')}</strong></div>"""
 b3 = render_luxury_box("🦅 3. BANDARMOLOGY", c3, f"FLOW: {data.get('stat_flow', 'N/A')}", data.get('flow_bg', ''))
 
 cols = st.columns(3)

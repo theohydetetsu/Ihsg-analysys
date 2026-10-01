@@ -10,7 +10,7 @@ import streamlit.components.v1 as components
 # ==========================================
 # --- KONFIGURASI HALAMAN ---
 # ==========================================
-st.set_page_config(page_title="HOLY GRAIL V34.1 - Ultimate Sniper", layout="wide")
+st.set_page_config(page_title="HOLY GRAIL V35 - Perfect Sync", layout="wide")
 
 st.markdown("""<style>
 .stApp, [data-testid="stAppViewContainer"] {background-color: #030712 !important;}
@@ -40,9 +40,9 @@ hr {margin-top: 0.4rem; margin-bottom: 0.4rem; border-color: #1e293b;}
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', unsafe_allow_html=True)
 
 # ==========================================
-# --- PANEL KONTROL V34.1 (5 KOLOM) ---
+# --- PANEL KONTROL V35 (5 KOLOM) ---
 # ==========================================
-st.markdown("### ⚙ PANEL KONTROL (V34.1 - MATA ELANG & CAMARILLA)")
+st.markdown("### ⚙ PANEL KONTROL (V35 - DYNAMIC EXECUTION)")
 
 col_in1, col_in2, col_in3, col_in4, col_in5 = st.columns(5)
 with col_in1:
@@ -76,7 +76,7 @@ def safe_int(val):
     try: return int(float(val)) if val is not None and not pd.isna(val) else 0
     except: return 0
 
-# --- DATABASE SEKTOR LOKAL (Dikembalikan) ---
+# --- DATABASE SEKTOR LOKAL ---
 LOCAL_SECTOR_DB = {
     "BBCA": ("Financials", "Banks"), "BBRI": ("Financials", "Banks"), "BMRI": ("Financials", "Banks"), "BBNI": ("Financials", "Banks"),
     "TLKM": ("Communication Services", "Telecom"), "GOTO": ("Technology", "Software"), "ASII": ("Consumer Cyclicals", "Auto"),
@@ -87,7 +87,7 @@ LOCAL_SECTOR_DB = {
     "DWGL": ("Energy", "Oil & Gas"), "IATA": ("Energy", "Coal")
 }
 
-# --- PELACAK IHSG (Dikembalikan) ---
+# --- PELACAK IHSG ---
 @st.cache_data(ttl=300)
 def get_ihsg_status():
     try:
@@ -105,7 +105,7 @@ def get_ihsg_status():
 ihsg_text, ihsg_color = get_ihsg_status()
 
 # ==========================================
-# --- MESIN KALKULASI DEWA V34.1 ---
+# --- MESIN KALKULASI DEWA V35 ---
 # ==========================================
 @st.cache_data(ttl=60)
 def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
@@ -297,8 +297,30 @@ if data is None or isinstance(data, dict) and "error" in data:
     st.error(f"❌ Terjadi kesalahan: Data historis scalping mungkin tidak tersedia di server Yahoo.")
     st.stop()
 
-p_val, r_val, s_val, ts_val = safe_int(data.get('price')), safe_int(data.get('res')), safe_int(data.get('sup')), safe_int(data.get('ts'))
+p_val = safe_int(data.get('price'))
 rsi_display = safe_num(data.get('rsi_val', 50))
+
+# --- DYNAMIC EXECUTION LOGIC (V35) ---
+# Kotak eksekusi akan menyesuaikan angka target TP dan SL berdasarkan mode!
+cam_h3_val = safe_int(data.get('cam_h3', 0))
+cam_l3_val = safe_int(data.get('cam_l3', 0))
+cam_l4_val = safe_int(data.get('cam_l4', 0))
+res_klasik = safe_int(data.get('res'))
+sup_klasik = safe_int(data.get('sup'))
+
+if is_scalping and cam_h3_val > 0:
+    target_tp = cam_h3_val       # Scalper TP di Resisten H3 Camarilla
+    target_sl = cam_l4_val       # Scalper SL jika jebol Support L4 Camarilla
+    antre_ideal = cam_l3_val     # Scalper antre jaring di L3
+    mode_label = " (Mode Scalping)"
+else:
+    target_tp = res_klasik       # Swing TP di Resisten Mayor
+    target_sl = sup_klasik       # Swing SL di Support Mayor
+    antre_ideal = sup_klasik
+    mode_label = " (Mode Swing)"
+
+if target_tp <= p_val: target_tp = int(p_val * 1.05)
+if target_sl >= p_val: target_sl = int(p_val * 0.95)
 
 score = 0
 if data.get('change', 0) > 0: score += 2
@@ -315,17 +337,25 @@ else: win_rate, wr_color = "< 30% (Risiko Bahaya)", "#f87171"
 
 risk_pct = float(risiko_input.split('%')[0]) / 100
 max_loss_rp = modal_input * risk_pct
-risk_per_share = p_val - s_val
+risk_per_share = p_val - target_sl
 if risk_per_share <= 0: risk_per_share = p_val * 0.02 
+
 max_lot = int((max_loss_rp / risk_per_share) / 100) if pd.notna(max_loss_rp / risk_per_share) else 0
 if max_lot < 1: max_lot = 0
-rr_ratio = round((r_val - p_val) / risk_per_share, 1) if risk_per_share > 0 else 0
+rr_ratio = round((target_tp - p_val) / risk_per_share, 1) if risk_per_share > 0 else 0
 div_html = f"<div style='color:#f87171; font-weight:900; font-size:0.75rem; text-align:center; animation: blinker 1.5s linear infinite;'>⚠️ AWAS DIVIDEND TRAP!</div>" if data.get('div_warning') else ""
 
-if rsi_display >= 85: entry_val, border_glow, accent_color = f"<span style='color:#f87171; font-weight:bold;'>⚠️ JANGAN HK</span>", "0 0 15px rgba(248, 113, 113, 0.4)", "#f87171" 
-elif rr_ratio < 0.5 and score >= 8: entry_val, border_glow, accent_color = f"<span style='color:#fbbf24; font-weight:bold;'>⚠ ANTRE BAWAH</span>", "0 0 15px rgba(251, 191, 36, 0.4)", "#fbbf24" 
-elif score >= 8: entry_val, border_glow, accent_color = f"<span style='color:#4ade80; font-weight:bold;'>Rp{p_val} (HAJAR)</span>", "0 0 15px rgba(74, 222, 128, 0.4)", "#4ade80" 
-else: entry_val, border_glow, accent_color = "<span style='color:#fbbf24; font-weight:bold;'>WAIT / PANTTAU</span>", "0 0 15px rgba(251, 191, 36, 0.4)", "#fbbf24" 
+# Teks Eksekusi Pintar dengan Mata Elang
+if rsi_display >= 85: 
+    entry_val, border_glow, accent_color = f"<span style='color:#f87171; font-weight:bold;'>⚠️ JANGAN HK (Pucuk)</span>", "0 0 15px rgba(248, 113, 113, 0.4)", "#f87171" 
+elif rr_ratio < 0.5 and score >= 8: 
+    entry_val, border_glow, accent_color = f"<span style='color:#fbbf24; font-weight:bold;'>⚠ ANTRE (Rp{antre_ideal})</span>", "0 0 15px rgba(251, 191, 36, 0.4)", "#fbbf24" 
+elif score >= 8: 
+    # Jika Mata Elang Mendeteksi Bullish Pattern
+    bull_txt = " (Pola Bullish!)" if data.get('candle_color') == "#4ade80" else " (HAJAR)"
+    entry_val, border_glow, accent_color = f"<span style='color:#4ade80; font-weight:bold;'>Rp{p_val}{bull_txt}</span>", "0 0 15px rgba(74, 222, 128, 0.4)", "#4ade80" 
+else: 
+    entry_val, border_glow, accent_color = "<span style='color:#fbbf24; font-weight:bold;'>WAIT / PANTAU</span>", "0 0 15px rgba(251, 191, 36, 0.4)", "#fbbf24" 
 
 # ==========================================
 # --- 1. HEADER DASHBOARD ---
@@ -353,40 +383,39 @@ st.markdown(f"""
     </div>
 </div>""", unsafe_allow_html=True)
 
-# KOTAK EKSEKUSI
+# KOTAK EKSEKUSI (Sekarang Otomatis Berubah Angka TP/SL nya!)
 rr_bg = "linear-gradient(90deg, #1e3a8a, #3b82f6)" if rr_ratio >= 1.5 else ("linear-gradient(90deg, #991b1b, #ef4444)" if rr_ratio < 0.5 else "linear-gradient(90deg, #78350f, #d97706)")
 st.markdown(f"""
 <div style='background: linear-gradient(145deg, #0f172a, #020617); border: 1px solid {accent_color}; padding: 10px; border-radius: 12px; box-shadow: {border_glow}; position: relative; overflow: hidden; margin-top: 8px; width: 100%;'>
 <div style='position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: {accent_color}; box-shadow: 0 0 10px {accent_color};'></div>
-<div style='color:#e5e7eb; font-size:0.75rem; font-weight:800; letter-spacing:1px; margin-bottom: 6px; text-align: center;'>FINAL EXECUTION</div>
+<div style='color:#e5e7eb; font-size:0.75rem; font-weight:800; letter-spacing:1px; margin-bottom: 6px; text-align: center;'>FINAL EXECUTION {mode_label.upper()}</div>
 {div_html}
 <div style='display:flex; flex-direction: column; gap: 4px; margin-top:4px;'>
 <div style='display:flex; justify-content: space-between; align-items:center; font-size: 0.85rem; border-bottom: 1px dashed #334151; padding-bottom: 2px;'><span style='color:#94a3b8;'>Entry Point</span> <span style='text-align: right;'>{entry_val}</span></div>
-<div style='display:flex; justify-content: space-between; align-items:center; font-size: 0.85rem; border-bottom: 1px dashed #334151; padding-bottom: 2px;'><span style='color:#94a3b8;'>Take Profit</span> <span style='color:#4ade80; font-weight:900;'>Rp{r_val}</span></div>
-<div style='display:flex; justify-content: space-between; align-items:center; font-size: 0.85rem; border-bottom: 1px dashed #334151; padding-bottom: 2px;'><span style='color:#94a3b8;'>Stop Loss</span> <span style='color:#f87171; font-weight:900;'>Rp{s_val}</span></div>
-<div style='display:flex; justify-content: space-between; align-items:center; font-size: 0.85rem; border-bottom: 1px dashed #334151; padding-bottom: 2px;'><span style='color:#94a3b8;'>Maks Beli</span> <span style='color:#4ade80; font-weight:900;'>{max_lot} LOT</span></div>
+<div style='display:flex; justify-content: space-between; align-items:center; font-size: 0.85rem; border-bottom: 1px dashed #334151; padding-bottom: 2px;'><span style='color:#94a3b8;'>Take Profit Target</span> <span style='color:#4ade80; font-weight:900;'>Rp{target_tp}</span></div>
+<div style='display:flex; justify-content: space-between; align-items:center; font-size: 0.85rem; border-bottom: 1px dashed #334151; padding-bottom: 2px;'><span style='color:#94a3b8;'>Stop Loss Limit</span> <span style='color:#f87171; font-weight:900;'>Rp{target_sl}</span></div>
+<div style='display:flex; justify-content: space-between; align-items:center; font-size: 0.85rem; border-bottom: 1px dashed #334151; padding-bottom: 2px;'><span style='color:#94a3b8;'>Maks Beli Aman</span> <span style='color:#4ade80; font-weight:900;'>{max_lot} LOT</span></div>
 </div>
 <div style='background: {rr_bg}; color:white; padding:4px; border-radius:4px; text-align:center; font-weight:900; font-size:0.75rem; margin-top: 8px;'>⚖️ R:R = 1 : {rr_ratio}</div>
 </div>""", unsafe_allow_html=True)
 
 # ==========================================
-# --- BUKU SAKU DEWA (SOP TRADING V34.1) ---
+# --- BUKU SAKU DEWA (SOP TRADING V35) ---
 # ==========================================
 st.markdown("<br>", unsafe_allow_html=True)
 with st.expander("📖 BUKU SAKU DEWA (Klik untuk membaca SOP & Aturan Main Eksekusi)"):
     st.markdown("""
     <div style='padding: 10px; background: #0f172a; border-radius: 8px; border-left: 4px solid #3b82f6; font-size: 0.85rem;'>
-    <h4 style='color: #38bdf8; margin-bottom: 10px; font-size: 1rem;'>SOP Eksekusi Holy Grail V34.1:</h4>
-    <p><strong>🔥 1. CARA MEMBACA SKOR:</strong></p>
+    <h4 style='color: #38bdf8; margin-bottom: 10px; font-size: 1rem;'>SOP Eksekusi Holy Grail V35:</h4>
+    <p><strong>🔥 1. CARA MEMBACA SKOR & MATA ELANG:</strong></p>
     <ul style='padding-left: 20px;'>
         <li>🌟 <strong>12-15 (GOD MODE):</strong> Sinyal terkuat! Boleh <em>Hajar Kanan</em>.</li>
-        <li>⭐ <strong>8-11 (STRONG BUY):</strong> Bagus. Cek <code>R:R Ratio</code>. Jika > 1:1.5 silakan beli. Jika jelek, ANTRE BAWAH.</li>
+        <li>⭐ <strong>8-11 (STRONG BUY):</strong> Bagus. Jika ada tambahan teks "Pola Bullish!", probabilitas naik sangat tinggi.</li>
     </ul>
-    <p><strong>🎯 2. CARA MENGGUNAKAN CAMARILLA (KHUSUS COPET/SCALPING):</strong></p>
+    <p><strong>🎯 2. MODE EKSEKUSI (OTOMATIS):</strong></p>
     <ul style='padding-left: 20px;'>
-        <li>Gunakan area <strong>L3 (Support)</strong> untuk pasang jaring beli saat harga terkoreksi.</li>
-        <li>Gunakan area <strong>H3 (Resisten)</strong> untuk langsung JUAL dan kunci cuan. Jangan serakah!</li>
-        <li>Jika harga menembus kencang di atas <strong>H4</strong>, artinya saham sedang <em>Breakout</em> parah, boleh tambah muatan.</li>
+        <li><strong>Mode Scalping:</strong> Target <em>Take Profit</em> dan <em>Stop Loss</em> di kotak Final Execution akan otomatis menggunakan angka <strong>Pivot Camarilla (H3 & L4)</strong>. Cocok untuk copet cepat intraday.</li>
+        <li><strong>Mode Swing:</strong> Kotak Final Execution otomatis menggunakan angka Resisten/Support Mayor.</li>
     </ul>
     </div>
     """, unsafe_allow_html=True)

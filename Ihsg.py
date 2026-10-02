@@ -10,7 +10,7 @@ import streamlit.components.v1 as components
 # ==========================================
 # --- KONFIGURASI HALAMAN ---
 # ==========================================
-st.set_page_config(page_title="HOLY GRAIL V36.2 - Smart Fundamental", layout="wide")
+st.set_page_config(page_title="HOLY GRAIL V36.3 - Chart Fix", layout="wide")
 
 st.markdown("""<style>
 .stApp, [data-testid="stAppViewContainer"] {background-color: #030712 !important;}
@@ -41,9 +41,9 @@ hr {margin-top: 0.4rem; margin-bottom: 0.4rem; border-color: #1e293b;}
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', unsafe_allow_html=True)
 
 # ==========================================
-# --- PANEL KONTROL V36.2 ---
+# --- PANEL KONTROL V36.3 ---
 # ==========================================
-st.markdown("### ⚙ PANEL KONTROL (V36.2 - SMART RADAR)")
+st.markdown("### ⚙ PANEL KONTROL (V36.3 - SMART RADAR & BB)")
 
 col_in1, col_in2, col_in3, col_in4, col_in5 = st.columns(5)
 with col_in1: ticker_input = st.text_input("🔍 1. Kode Saham:", "BBCA").upper().strip()
@@ -99,7 +99,7 @@ def get_ihsg_status():
 ihsg_text, ihsg_color = get_ihsg_status()
 
 # ==========================================
-# --- MESIN KALKULASI DEWA V36.2 ---
+# --- MESIN KALKULASI DEWA V36.3 ---
 # ==========================================
 @st.cache_data(ttl=60)
 def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
@@ -245,7 +245,7 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
         vol_ratio = (vol.iloc[-1] / vol_ma20) * 100 if vol_ma20 > 0 else 100
         vpa_stat, vpa_score = (f"Ledakan ({int(vol_ratio)}%)", 1) if vol_ratio > 150 else (f"Volume Normal", 0)
         
-        # --- PERHITUNGAN LIKUIDITAS BARU (V36.2) ---
+        # --- PERHITUNGAN LIKUIDITAS ---
         avg_turnover = vol_ma20 * latest_price
         if avg_turnover >= 5_000_000_000: # Di atas 5 Miliar / hari
             liq_stat, liq_col = "Sangat Ramai (Aman)", "#4ade80"
@@ -257,7 +257,6 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
         if is_screener:
             return {"Ticker": clean_ticker, "Harga": safe_int(latest_price), "Bandar_Flow": auto_bandar, "Fase": mtf_status, "RSI": round(safe_num(rsi_val), 1)}
 
-        # --- PEMBARUAN TEKS FUNDAMENTAL (V36.2) ---
         pe_raw = safe_num(info.get('trailingPE'))
         pbv_raw = safe_num(info.get('priceToBook'))
         roe_raw = safe_num(info.get('returnOnEquity'))
@@ -382,7 +381,6 @@ if warnings_list:
     warn_str = "<br>".join(warnings_list)
     warning_html = f"<div style='background:rgba(248,113,113,0.15); border:1px solid #f87171; color:#f87171; padding:6px; border-radius:6px; font-size:0.75rem; font-weight:900; text-align:center; margin-bottom:8px; line-height: 1.5; animation: blinker 1.5s linear infinite;'>{warn_str}</div>"
 
-# Teks Eksekusi Pintar
 if rsi_display >= 85: 
     entry_val, border_glow, accent_color = f"<span style='color:#f87171; font-weight:bold;'>⚠️ JANGAN HK (Pucuk)</span>", "0 0 15px rgba(248, 113, 113, 0.4)", "#f87171" 
 elif rr_ratio < 0.5 and score >= 8: 
@@ -462,6 +460,7 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
+# --- CHART FIX: MENAMBAHKAN BOLLINGER BANDS (UNTUK MA20) & VOLUME ---
 components.html(f"""
 <div style="border-radius: 10px; border: 1px solid #334151; overflow: hidden; background: #0f172a; margin-bottom: 10px; height: 480px;">
     <div id="tradingview_chart" style="height: 100%; width: 100%;"></div>
@@ -479,8 +478,7 @@ components.html(f"""
         "container_id": "tradingview_chart",
         "studies": [
             "Volume@tv-basicstudies",
-            {{"id": "MASimple@tv-basicstudies", "inputs": {{"length": 21}}}},
-            {{"id": "MASimple@tv-basicstudies", "inputs": {{"length": 50}}}}
+            "BB@tv-basicstudies"
         ]
     }});
     </script>
@@ -506,7 +504,6 @@ def render_luxury_box(title, content, badge_text, badge_style):
     </div>
 </div>"""
 
-# --- KOTAK 1 DIUBAH (V36.2) ---
 c1 = f"""<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Market Cap:</span> <strong style='color:#f3f4f6;'>{data.get('mc_str', 'N/A')}</strong></div>
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>PER (Valuasi):</span> <div style='text-align:right;'>{data.get('pe_str', 'N/A')}</div></div>
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>PBV (Aset):</span> <div style='text-align:right;'>{data.get('pbv_str', 'N/A')}</div></div>
@@ -522,7 +519,6 @@ c2 = f"""<div style='display:flex; justify-content: space-between; align-items:c
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Bollinger B.:</span> <strong style='color:#4ade80; text-align:right;'>{data.get('bb_stat', 'N/A')}</strong></div>"""
 b2 = render_luxury_box("📈 2. TEKNIKAL & AI", c2, f"KESIMPULAN: {data.get('stat_tech', 'N/A')}", data.get('tech_bg', ''))
 
-# --- KOTAK 3 DIUBAH (V36.2) LIKUIDITAS BARU ---
 c3 = f"""<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8; flex-shrink: 0;'>AI Bandar:</span> <strong style='color:{data.get('bandar_color', '#fff')}; text-align:right;'>{data.get('auto_bandar', 'N/A')}</strong></div>
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8; flex-shrink: 0;'>Asing Flow:</span> <div>{asing_label}</div></div>
 <hr style='margin: 2px 0; border: 0.5px dashed #334151;'>

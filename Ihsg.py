@@ -10,7 +10,7 @@ import streamlit.components.v1 as components
 # ==========================================
 # --- KONFIGURASI HALAMAN ---
 # ==========================================
-st.set_page_config(page_title="HOLY GRAIL V36.5 - Jumbo Execution", layout="wide")
+st.set_page_config(page_title="HOLY GRAIL V36.6 - Perfect Symphony", layout="wide")
 
 st.markdown("""<style>
 .stApp, [data-testid="stAppViewContainer"] {background-color: #030712 !important;}
@@ -35,16 +35,16 @@ hr {margin-top: 0.4rem; margin-bottom: 0.4rem; border-color: #1e293b;}
 .dataframe {background-color: #0f172a !important; color: #f3f4f6 !important; border-color: #334155 !important;}
 .streamlit-expanderHeader {background-color: #1e3a8a !important; color: white !important; border-radius: 8px !important; font-weight: bold !important;}
 @keyframes blinker { 50% { opacity: 0.3; } }
-@keyframes pulse_green { 0% {box-shadow: 0 0 10px #4ade8040;} 50% {box-shadow: 0 0 25px #4ade8080;} 100% {box-shadow: 0 0 10px #4ade8040;} }
-@keyframes pulse_red { 0% {box-shadow: 0 0 10px #f8717140;} 50% {box-shadow: 0 0 25px #f8717180;} 100% {box-shadow: 0 0 10px #f8717140;} }
-@keyframes pulse_yellow { 0% {box-shadow: 0 0 10px #fbbf2440;} 50% {box-shadow: 0 0 25px #fbbf2480;} 100% {box-shadow: 0 0 10px #fbbf2440;} }
+@keyframes pulse_green { 0% {box-shadow: 0 0 15px #4ade8040;} 50% {box-shadow: 0 0 30px #4ade8080;} 100% {box-shadow: 0 0 15px #4ade8040;} }
+@keyframes pulse_red { 0% {box-shadow: 0 0 15px #f8717140;} 50% {box-shadow: 0 0 30px #f8717180;} 100% {box-shadow: 0 0 15px #f8717140;} }
+@keyframes pulse_yellow { 0% {box-shadow: 0 0 15px #fbbf2440;} 50% {box-shadow: 0 0 30px #fbbf2480;} 100% {box-shadow: 0 0 15px #fbbf2440;} }
 </style>""", unsafe_allow_html=True)
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', unsafe_allow_html=True)
 
 # ==========================================
-# --- PANEL KONTROL V36.5 ---
+# --- PANEL KONTROL V36.6 ---
 # ==========================================
-st.markdown("### ⚙ PANEL KONTROL (V36.5 - JUMBO EXECUTION)")
+st.markdown("### ⚙ PANEL KONTROL (V36.6 - PERFECT SYMPHONY)")
 
 col_in1, col_in2, col_in3, col_in4, col_in5 = st.columns(5)
 with col_in1: ticker_input = st.text_input("🔍 1. Kode Saham:", "BBCA").upper().strip()
@@ -73,7 +73,7 @@ def safe_int(val):
     try: return int(float(val)) if val is not None and not pd.isna(val) else 0
     except: return 0
 
-# --- PELACAK IHSG ---
+# --- PELACAK IHSG JUMBO (V36.6) ---
 @st.cache_data(ttl=300)
 def get_ihsg_status():
     try:
@@ -82,18 +82,23 @@ def get_ihsg_status():
         if len(hist) >= 2:
             prev_close, curr_price = hist['Close'].iloc[-2], hist['Close'].iloc[-1]
             change_pct = ((curr_price - prev_close) / prev_close) * 100
-            if change_pct > 0.3: return f"🟢 IHSG AMAN (+{change_pct:.2f}%)", "#4ade80", "pulse_green"
-            elif change_pct < -0.3: return f"🔴 IHSG RAWAN ({change_pct:.2f}%)", "#f87171", "pulse_red"
-            else: return f"🟡 IHSG SIDEWAYS ({change_pct:.2f}%)", "#fbbf24", "pulse_yellow"
-        return "⚪ IHSG OFFLINE", "#94a3b8", "none"
-    except: return "⚪ IHSG ERROR", "#94a3b8", "none"
+            price_str = f"{curr_price:,.2f}"
+            if change_pct > 0.3: return f"IHSG AMAN (+{change_pct:.2f}%)", "#4ade80", "pulse_green", price_str
+            elif change_pct < -0.3: return f"IHSG RAWAN ({change_pct:.2f}%)", "#f87171", "pulse_red", price_str
+            else: return f"IHSG SIDEWAYS ({change_pct:.2f}%)", "#fbbf24", "pulse_yellow", price_str
+        return "IHSG OFFLINE", "#94a3b8", "none", "0.00"
+    except: return "IHSG ERROR", "#94a3b8", "none", "0.00"
 
-ihsg_text, ihsg_color, ihsg_anim = get_ihsg_status()
+ihsg_text, ihsg_color, ihsg_anim, ihsg_price = get_ihsg_status()
 
-# TAMPILAN IHSG YANG MENONJOL
+# TAMPILAN IHSG JUMBO DENGAN HARGA REAL-TIME
 st.markdown(f"""
-<div style='background: linear-gradient(90deg, #020617, #0f172a, #020617); border: 2px solid {ihsg_color}; padding: 12px; border-radius: 10px; text-align: center; margin-bottom: 20px; animation: {ihsg_anim} 2s infinite;'>
-    <h4 style='margin:0; color:{ihsg_color}; font-weight:900; letter-spacing: 2px; font-size: 1.2rem;'>🧭 KOMPAS PASAR: {ihsg_text.upper()}</h4>
+<div style='background: linear-gradient(145deg, #020617, #0f172a); border: 2px solid {ihsg_color}; padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 25px; animation: {ihsg_anim} 2s infinite; box-shadow: 0 0 15px {ihsg_color}40;'>
+    <h3 style='margin:0 0 8px 0; color:#f3f4f6; font-weight:900; letter-spacing: 1px; font-size: 1.2rem; text-transform:uppercase;'>🧭 KOMPAS PASAR UTAMA</h3>
+    <div style='display:flex; justify-content:center; align-items:center; gap: 20px; flex-wrap: wrap;'>
+        <span style='font-size: 2.5rem; font-weight: 900; color: #f3f4f6; letter-spacing: 1px;'>{ihsg_price}</span>
+        <span style='font-size: 1.3rem; font-weight: 900; color: {ihsg_color}; background: {ihsg_color}15; padding: 6px 16px; border-radius: 8px; border: 1px solid {ihsg_color}50;'>{ihsg_text}</span>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -108,7 +113,7 @@ LOCAL_SECTOR_DB = {
 }
 
 # ==========================================
-# --- MESIN KALKULASI DEWA V36.5 ---
+# --- MESIN KALKULASI DEWA V36.6 ---
 # ==========================================
 @st.cache_data(ttl=60)
 def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
@@ -260,7 +265,7 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
         vol_ratio = (vol.iloc[-1] / vol_ma20) * 100 if vol_ma20 > 0 else 100
         vpa_stat, vpa_score = (f"Ledakan ({int(vol_ratio)}%)", 1) if vol_ratio > 150 else (f"Volume Normal", 0)
         
-        # --- PERHITUNGAN LIKUIDITAS ---
+        # --- PERHITUNGAN LIKUIDITAS & TURNOVER (V36.6) ---
         avg_turnover = vol_ma20 * latest_price
         if avg_turnover >= 5_000_000_000:
             liq_stat, liq_col = "Sangat Ramai (Aman)", "#4ade80"
@@ -268,6 +273,9 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
             liq_stat, liq_col = "Wajar / Standar", "#fbbf24"
         else:                            
             liq_stat, liq_col = "Sepi (Awas Guyuran)", "#f87171"
+            
+        if avg_turnover >= 1_000_000_000: turnover_str = f"Rp {avg_turnover/1_000_000_000:.1f} Milyar"
+        else: turnover_str = f"Rp {avg_turnover/1_000_000:.1f} Juta"
 
         if is_screener:
             return {"Ticker": clean_ticker, "Harga": safe_int(latest_price), "Bandar_Flow": auto_bandar, "Fase": mtf_status, "RSI": round(safe_num(rsi_val), 1)}
@@ -335,7 +343,7 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
             'sector': sector, 'industry': industry, 'fibo_stat': fibo_stat, 'fibo_score': fibo_score, 'trend': mtf_status, 'trend_col': trend_col, 
             'rsi_val': safe_num(rsi_val), 'macd_str': macd_str, 'vpa_stat': vpa_stat, 'vpa_score': vpa_score, 'bb_stat': bb_stat, 'bb_score': bb_score, 
             'mtf_score': mtf_score, 'pe_str': pe_str, 'pbv_str': pbv_str, 'roe_str': roe_str, 'eps_str': f"Rp{eps_raw:,.0f}" if eps_raw>0 else "N/A", 
-            'hw_str': hw_str, 
+            'hw_str': hw_str, 'turnover_str': turnover_str,
             'stat_funda': stat_funda, 'funda_bg': funda_bg, 'stat_tech': stat_tech, 'tech_bg': tech_bg, 
             'stat_flow': "Akumulasi Masif" if bandar_score==3 else ("Distribusi" if bandar_score==0 else "Market Mixed"), 
             'flow_bg': "rgba(74, 222, 128, 0.15)" if bandar_score==3 else ("rgba(248, 113, 113, 0.15)" if bandar_score==0 else "rgba(251, 191, 36, 0.15)"),
@@ -410,7 +418,6 @@ if data.get('candle_color') == "#f87171": warnings_list.append("🐻 POLA BEARIS
 warning_html = ""
 if warnings_list:
     warn_str = "<br>".join(warnings_list)
-    # WARNING BOX DIPERBESAR
     warning_html = f"<div style='background:rgba(248,113,113,0.15); border:2px solid #f87171; color:#f87171; padding:10px; border-radius:8px; font-size:1rem; font-weight:900; text-align:center; margin-bottom:12px; line-height: 1.5; animation: blinker 1.5s linear infinite; box-shadow: 0 0 10px rgba(248,113,113,0.3);'>{warn_str}</div>"
 
 if rsi_display >= 85: 
@@ -453,7 +460,6 @@ st.markdown(f"""
 
 rr_bg = "linear-gradient(90deg, #1e3a8a, #3b82f6)" if rr_ratio >= 1.5 else ("linear-gradient(90deg, #991b1b, #ef4444)" if rr_ratio < 0.5 else "linear-gradient(90deg, #78350f, #d97706)")
 
-# --- KOTAK FINAL EXECUTION JUMBO (V36.5) ---
 st.markdown(f"""
 <div style='background: linear-gradient(145deg, #0f172a, #020617); border: 2px solid {accent_color}; padding: 20px; border-radius: 12px; box-shadow: {border_glow}; position: relative; overflow: hidden; margin-top: 15px; margin-bottom: 15px; width: 100%;'>
 <div style='position: absolute; top: 0; left: 0; width: 100%; height: 5px; background: {accent_color}; box-shadow: 0 0 15px {accent_color};'></div>
@@ -524,8 +530,9 @@ st.markdown(f"""<div style='display:flex; flex-wrap: wrap; justify-content:space
     <div style='text-align:center; flex: 1; min-width: 120px;'>🚀 <span style='color:#94a3b8; font-size:0.85rem;'>Batas ARA:</span> <strong style='color:#4ade80; font-size:1rem;'>Rp{data.get('ara_price', 0)}</strong></div>
     <div style='text-align:center; flex: 1; min-width: 120px;'>🩸 <span style='color:#94a3b8; font-size:0.85rem;'>Batas ARB:</span> <strong style='color:#f87171; font-size:1rem;'>Rp{data.get('arb_price', 0)}</strong></div></div>""", unsafe_allow_html=True)
 
+# MIN HEIGHT DITAMBAH JADI 280px AGAR SELALU PRESISI
 def render_luxury_box(title, content, badge_text, badge_style):
-    return f"""<div style='height: 100%; min-height: 250px; display: flex; flex-direction: column; justify-content: space-between;'>
+    return f"""<div style='height: 100%; min-height: 280px; display: flex; flex-direction: column; justify-content: space-between;'>
     <div>
         <div style='font-size: 0.95rem; font-weight: 900; color:#38bdf8; letter-spacing: 0.5px;'>{title}</div>
         <hr style='margin: 6px 0; border-color:#334151;'>
@@ -535,6 +542,8 @@ def render_luxury_box(title, content, badge_text, badge_style):
         {badge_text}
     </div>
 </div>"""
+
+# --- SINKRONISASI JUMLAH BARIS (6 BARIS + 1 GARIS TIAP KOTAK) ---
 
 c1 = f"""<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Market Cap:</span> <strong style='color:#f3f4f6;'>{data.get('mc_str', 'N/A')}</strong></div>
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>PER (Valuasi):</span> <div style='text-align:right;'>{data.get('pe_str', 'N/A')}</div></div>
@@ -546,8 +555,9 @@ c1 = f"""<div style='display:flex; justify-content: space-between; align-items:c
 b1 = render_luxury_box("💼 1. FUNDAMENTAL", c1, f"STATUS: {data.get('stat_funda', 'N/A')}", data.get('funda_bg', ''))
 
 c2 = f"""<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8; flex-shrink: 0;'>Pola Mata Elang:</span> <strong style='color:{data.get('candle_color', '#fff')}; text-align:right;'>{data.get('candle_pattern', 'N/A')}</strong></div>
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Tren Mayor:</span> <strong style='color:{data.get('trend_col', '#fff')}; text-align:right;'>{data.get('trend', 'N/A')}</strong></div>
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8; flex-shrink: 0;'>Posisi Fibo:</span> <strong style='color:#f3f4f6; text-align:right;'>{data.get('fibo_stat', 'N/A')}</strong></div>
-<hr style='margin: 2px 0; border: 0.5px dashed #334151;'>
+<hr style='margin: 4px 0; border: 0.5px dashed #334151;'>
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>RSI (14):</span> <strong style='color:{'#4ade80' if rsi_display<=30 else ('#f87171' if rsi_display>=70 else '#f3f4f6')}; text-align:right;'>{rsi_display:.1f}</strong></div>
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Sinyal MACD:</span> <div>{data.get('macd_str', 'N/A')}</div></div>
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Bollinger B.:</span> <strong style='color:#4ade80; text-align:right;'>{data.get('bb_stat', 'N/A')}</strong></div>"""
@@ -555,7 +565,8 @@ b2 = render_luxury_box("📈 2. TEKNIKAL & AI", c2, f"KESIMPULAN: {data.get('sta
 
 c3 = f"""<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8; flex-shrink: 0;'>AI Bandar:</span> <strong style='color:{data.get('bandar_color', '#fff')}; text-align:right;'>{data.get('auto_bandar', 'N/A')}</strong></div>
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8; flex-shrink: 0;'>Asing Flow:</span> <div>{asing_label}</div></div>
-<hr style='margin: 2px 0; border: 0.5px dashed #334151;'>
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Avg Transaksi:</span> <strong style='color:#f3f4f6; text-align:right;'>{data.get('turnover_str', 'N/A')}</strong></div>
+<hr style='margin: 4px 0; border: 0.5px dashed #334151;'>
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Volume (VPA):</span> <strong style='color:#4ade80; text-align:right;'>{data.get('vpa_stat', 'N/A')}</strong></div>
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Volatilitas ATR:</span> <strong style='color:#4ade80; text-align:right;'>Terpantau</strong></div>
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>Likuiditas (Antrean):</span> <strong style='color:{data.get('liq_col', '#fff')}; text-align:right;'>{data.get('liq_stat', 'N/A')}</strong></div>"""

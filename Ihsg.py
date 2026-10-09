@@ -10,7 +10,7 @@ import streamlit.components.v1 as components
 # ==========================================
 # --- KONFIGURASI HALAMAN ---
 # ==========================================
-st.set_page_config(page_title="HOLY GRAIL V36.3 - Chart Fix", layout="wide")
+st.set_page_config(page_title="HOLY GRAIL V36.5 - Jumbo Execution", layout="wide")
 
 st.markdown("""<style>
 .stApp, [data-testid="stAppViewContainer"] {background-color: #030712 !important;}
@@ -33,17 +33,18 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
 p, span, li, div.stMarkdown, .stText {font-size: 0.85rem !important; line-height: 1.4 !important;}
 hr {margin-top: 0.4rem; margin-bottom: 0.4rem; border-color: #1e293b;}
 .dataframe {background-color: #0f172a !important; color: #f3f4f6 !important; border-color: #334155 !important;}
-
-/* STYLING EXPANDER PANDUAN */
 .streamlit-expanderHeader {background-color: #1e3a8a !important; color: white !important; border-radius: 8px !important; font-weight: bold !important;}
 @keyframes blinker { 50% { opacity: 0.3; } }
+@keyframes pulse_green { 0% {box-shadow: 0 0 10px #4ade8040;} 50% {box-shadow: 0 0 25px #4ade8080;} 100% {box-shadow: 0 0 10px #4ade8040;} }
+@keyframes pulse_red { 0% {box-shadow: 0 0 10px #f8717140;} 50% {box-shadow: 0 0 25px #f8717180;} 100% {box-shadow: 0 0 10px #f8717140;} }
+@keyframes pulse_yellow { 0% {box-shadow: 0 0 10px #fbbf2440;} 50% {box-shadow: 0 0 25px #fbbf2480;} 100% {box-shadow: 0 0 10px #fbbf2440;} }
 </style>""", unsafe_allow_html=True)
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">', unsafe_allow_html=True)
 
 # ==========================================
-# --- PANEL KONTROL V36.3 ---
+# --- PANEL KONTROL V36.5 ---
 # ==========================================
-st.markdown("### ⚙ PANEL KONTROL (V36.3 - SMART RADAR & BB)")
+st.markdown("### ⚙ PANEL KONTROL (V36.5 - JUMBO EXECUTION)")
 
 col_in1, col_in2, col_in3, col_in4, col_in5 = st.columns(5)
 with col_in1: ticker_input = st.text_input("🔍 1. Kode Saham:", "BBCA").upper().strip()
@@ -72,6 +73,30 @@ def safe_int(val):
     try: return int(float(val)) if val is not None and not pd.isna(val) else 0
     except: return 0
 
+# --- PELACAK IHSG ---
+@st.cache_data(ttl=300)
+def get_ihsg_status():
+    try:
+        ihsg = yf.Ticker("^JKSE")
+        hist = ihsg.history(period="5d")
+        if len(hist) >= 2:
+            prev_close, curr_price = hist['Close'].iloc[-2], hist['Close'].iloc[-1]
+            change_pct = ((curr_price - prev_close) / prev_close) * 100
+            if change_pct > 0.3: return f"🟢 IHSG AMAN (+{change_pct:.2f}%)", "#4ade80", "pulse_green"
+            elif change_pct < -0.3: return f"🔴 IHSG RAWAN ({change_pct:.2f}%)", "#f87171", "pulse_red"
+            else: return f"🟡 IHSG SIDEWAYS ({change_pct:.2f}%)", "#fbbf24", "pulse_yellow"
+        return "⚪ IHSG OFFLINE", "#94a3b8", "none"
+    except: return "⚪ IHSG ERROR", "#94a3b8", "none"
+
+ihsg_text, ihsg_color, ihsg_anim = get_ihsg_status()
+
+# TAMPILAN IHSG YANG MENONJOL
+st.markdown(f"""
+<div style='background: linear-gradient(90deg, #020617, #0f172a, #020617); border: 2px solid {ihsg_color}; padding: 12px; border-radius: 10px; text-align: center; margin-bottom: 20px; animation: {ihsg_anim} 2s infinite;'>
+    <h4 style='margin:0; color:{ihsg_color}; font-weight:900; letter-spacing: 2px; font-size: 1.2rem;'>🧭 KOMPAS PASAR: {ihsg_text.upper()}</h4>
+</div>
+""", unsafe_allow_html=True)
+
 # --- DATABASE SEKTOR LOKAL ---
 LOCAL_SECTOR_DB = {
     "BBCA": ("Financials", "Banks"), "BBRI": ("Financials", "Banks"), "BMRI": ("Financials", "Banks"), "BBNI": ("Financials", "Banks"),
@@ -82,24 +107,8 @@ LOCAL_SECTOR_DB = {
     "PGEO": ("Utilities", "Renewable"), "CUAN": ("Energy", "Coal"), "VIVA": ("Communication Services", "Media")
 }
 
-@st.cache_data(ttl=300)
-def get_ihsg_status():
-    try:
-        ihsg = yf.Ticker("^JKSE")
-        hist = ihsg.history(period="5d")
-        if len(hist) >= 2:
-            prev_close, curr_price = hist['Close'].iloc[-2], hist['Close'].iloc[-1]
-            change_pct = ((curr_price - prev_close) / prev_close) * 100
-            if change_pct > 0.3: return f"🟢 IHSG AMAN (+{change_pct:.2f}%)", "#4ade80"
-            elif change_pct < -0.3: return f"🔴 IHSG RAWAN ({change_pct:.2f}%)", "#f87171"
-            else: return f"🟡 IHSG SIDEWAYS ({change_pct:.2f}%)", "#fbbf24"
-        return "⚪ IHSG OFFLINE", "#94a3b8"
-    except: return "⚪ IHSG ERROR", "#94a3b8"
-
-ihsg_text, ihsg_color = get_ihsg_status()
-
 # ==========================================
-# --- MESIN KALKULASI DEWA V36.3 ---
+# --- MESIN KALKULASI DEWA V36.5 ---
 # ==========================================
 @st.cache_data(ttl=60)
 def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
@@ -111,9 +120,15 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
         
         hist_6m = hist.tail(130).copy()
         hist_latest_price = hist['Close'].iloc[-1]
+        
         try: info = stock.info
         except: info = {}
-        
+        if not info or len(info) < 5:
+            try:
+                fast = stock.fast_info
+                info['marketCap'] = fast.get('market_cap', 0)
+            except: pass
+
         clean_ticker = ticker_symbol.replace('.JK', '')
         sector = info.get('sector')
         industry = info.get('industry')
@@ -247,11 +262,11 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
         
         # --- PERHITUNGAN LIKUIDITAS ---
         avg_turnover = vol_ma20 * latest_price
-        if avg_turnover >= 5_000_000_000: # Di atas 5 Miliar / hari
+        if avg_turnover >= 5_000_000_000:
             liq_stat, liq_col = "Sangat Ramai (Aman)", "#4ade80"
-        elif avg_turnover >= 500_000_000: # 500 Juta - 5 Miliar
+        elif avg_turnover >= 500_000_000:
             liq_stat, liq_col = "Wajar / Standar", "#fbbf24"
-        else:                             # Di bawah 500 Juta (Gorengan Sepi)
+        else:                            
             liq_stat, liq_col = "Sepi (Awas Guyuran)", "#f87171"
 
         if is_screener:
@@ -262,7 +277,6 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
         roe_raw = safe_num(info.get('returnOnEquity'))
         eps_raw = safe_num(info.get('trailingEps')) 
         
-        # Format PER Pintar
         if pe_raw > 0:
             if pe_raw <= 15: pe_label, pe_col = " (Murah)", "#4ade80"
             elif pe_raw <= 25: pe_label, pe_col = " (Wajar)", "#fbbf24"
@@ -270,9 +284,8 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
             pe_disp = f"{pe_raw:.1f}x" if pe_raw < 1000 else ">1000x"
             pe_str = f"<strong style='color:{pe_col};'>{pe_disp}{pe_label}</strong>"
         elif pe_raw < 0: pe_str = "<strong style='color:#f87171;'>Minus (Rugi)</strong>"
-        else: pe_str = "<strong style='color:#94a3b8;'>N/A (Cek LK)</strong>"
+        else: pe_str = "<strong style='color:#94a3b8;'>N/A (Server Sibuk)</strong>"
 
-        # Format PBV Pintar
         if pbv_raw > 0:
             if pbv_raw <= 1.5: pbv_label, pbv_col = " (Murah)", "#4ade80"
             elif pbv_raw <= 3.0: pbv_label, pbv_col = " (Wajar)", "#fbbf24"
@@ -282,15 +295,32 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
         elif pbv_raw < 0: pbv_str = "<strong style='color:#f87171;'>Defisit Ekuitas</strong>"
         else: pbv_str = "<strong style='color:#94a3b8;'>N/A</strong>"
 
-        # Format ROE Pintar
         if roe_raw != 0 and not pd.isna(roe_raw):
             roe_pct = roe_raw * 100
-            if roe_pct >= 15: roe_label, roe_col = " (Sangat Bagus)", "#4ade80"
+            if roe_pct >= 15: roe_label, roe_col = " (Sgt Bagus)", "#4ade80"
             elif roe_pct >= 5: roe_label, roe_col = " (Wajar)", "#fbbf24"
-            else: roe_label, roe_col = " (Jelek/Rugi)", "#f87171"
+            else: roe_label, roe_col = " (Jelek)", "#f87171"
             roe_disp = f"{roe_pct:.1f}%" if abs(roe_pct) < 1000 else ">1000%"
             roe_str = f"<strong style='color:{roe_col};'>{roe_disp}{roe_label}</strong>"
         else: roe_str = "<strong style='color:#94a3b8;'>N/A</strong>"
+
+        harga_wajar = 0
+        if eps_raw > 0 and pbv_raw > 0:
+            bvps_calc = latest_price / pbv_raw
+            bvps_info = safe_num(info.get('bookValue', bvps_calc))
+            if bvps_info > 0:
+                harga_wajar = math.sqrt(22.5 * eps_raw * bvps_info)
+        
+        if harga_wajar > 0:
+            margin = ((harga_wajar - latest_price) / latest_price) * 100
+            if margin > 10:
+                hw_str = f"<strong style='color:#4ade80;'>Rp{harga_wajar:,.0f} (Diskon {margin:.0f}%)</strong>"
+            elif margin < -10:
+                hw_str = f"<strong style='color:#f87171;'>Rp{harga_wajar:,.0f} (Overvalue)</strong>"
+            else:
+                hw_str = f"<strong style='color:#fbbf24;'>Rp{harga_wajar:,.0f} (Harga Pas)</strong>"
+        else:
+            hw_str = "<strong style='color:#94a3b8;'>N/A (Data EPS/PBV Kosong)</strong>"
 
         f_score = sum([pe_raw>0 and pe_raw<25, pbv_raw>0 and pbv_raw<4, roe_raw>0.05])
         stat_funda, funda_bg = ("SEHAT & LAYAK", "rgba(74, 222, 128, 0.15)") if f_score >= 2 else ("BERISIKO/MAHAL", "rgba(248, 113, 113, 0.15)")
@@ -305,6 +335,7 @@ def get_stock_data(ticker_symbol, is_screener=False, interval="1d"):
             'sector': sector, 'industry': industry, 'fibo_stat': fibo_stat, 'fibo_score': fibo_score, 'trend': mtf_status, 'trend_col': trend_col, 
             'rsi_val': safe_num(rsi_val), 'macd_str': macd_str, 'vpa_stat': vpa_stat, 'vpa_score': vpa_score, 'bb_stat': bb_stat, 'bb_score': bb_score, 
             'mtf_score': mtf_score, 'pe_str': pe_str, 'pbv_str': pbv_str, 'roe_str': roe_str, 'eps_str': f"Rp{eps_raw:,.0f}" if eps_raw>0 else "N/A", 
+            'hw_str': hw_str, 
             'stat_funda': stat_funda, 'funda_bg': funda_bg, 'stat_tech': stat_tech, 'tech_bg': tech_bg, 
             'stat_flow': "Akumulasi Masif" if bandar_score==3 else ("Distribusi" if bandar_score==0 else "Market Mixed"), 
             'flow_bg': "rgba(74, 222, 128, 0.15)" if bandar_score==3 else ("rgba(248, 113, 113, 0.15)" if bandar_score==0 else "rgba(251, 191, 36, 0.15)"),
@@ -379,20 +410,21 @@ if data.get('candle_color') == "#f87171": warnings_list.append("🐻 POLA BEARIS
 warning_html = ""
 if warnings_list:
     warn_str = "<br>".join(warnings_list)
-    warning_html = f"<div style='background:rgba(248,113,113,0.15); border:1px solid #f87171; color:#f87171; padding:6px; border-radius:6px; font-size:0.75rem; font-weight:900; text-align:center; margin-bottom:8px; line-height: 1.5; animation: blinker 1.5s linear infinite;'>{warn_str}</div>"
+    # WARNING BOX DIPERBESAR
+    warning_html = f"<div style='background:rgba(248,113,113,0.15); border:2px solid #f87171; color:#f87171; padding:10px; border-radius:8px; font-size:1rem; font-weight:900; text-align:center; margin-bottom:12px; line-height: 1.5; animation: blinker 1.5s linear infinite; box-shadow: 0 0 10px rgba(248,113,113,0.3);'>{warn_str}</div>"
 
 if rsi_display >= 85: 
-    entry_val, border_glow, accent_color = f"<span style='color:#f87171; font-weight:bold;'>⚠️ JANGAN HK (Pucuk)</span>", "0 0 15px rgba(248, 113, 113, 0.4)", "#f87171" 
+    entry_val, border_glow, accent_color = f"<span style='color:#f87171; font-weight:bold;'>⚠️ JANGAN HK (Pucuk)</span>", "0 0 20px rgba(248, 113, 113, 0.6)", "#f87171" 
 elif rr_ratio < 0.5 and score >= 8: 
-    entry_val, border_glow, accent_color = f"<span style='color:#fbbf24; font-weight:bold;'>⚠ ANTRE (Rp{antre_ideal})</span>", "0 0 15px rgba(251, 191, 36, 0.4)", "#fbbf24" 
+    entry_val, border_glow, accent_color = f"<span style='color:#fbbf24; font-weight:bold;'>⚠ ANTRE (Rp{antre_ideal})</span>", "0 0 20px rgba(251, 191, 36, 0.6)", "#fbbf24" 
 elif score >= 8: 
     if warnings_list:
-        entry_val, border_glow, accent_color = f"<span style='color:#fbbf24; font-weight:bold;'>Rp{p_val} (HAJAR TAPI WASPADA)</span>", "0 0 15px rgba(251, 191, 36, 0.4)", "#fbbf24"
+        entry_val, border_glow, accent_color = f"<span style='color:#fbbf24; font-weight:bold;'>Rp{p_val} (HAJAR TAPI WASPADA)</span>", "0 0 20px rgba(251, 191, 36, 0.6)", "#fbbf24"
     else:
         bull_txt = " (Pola Bullish!)" if data.get('candle_color') == "#4ade80" else " (HAJAR)"
-        entry_val, border_glow, accent_color = f"<span style='color:#4ade80; font-weight:bold;'>Rp{p_val}{bull_txt}</span>", "0 0 15px rgba(74, 222, 128, 0.4)", "#4ade80" 
+        entry_val, border_glow, accent_color = f"<span style='color:#4ade80; font-weight:bold;'>Rp{p_val}{bull_txt}</span>", "0 0 20px rgba(74, 222, 128, 0.6)", "#4ade80" 
 else: 
-    entry_val, border_glow, accent_color = "<span style='color:#fbbf24; font-weight:bold;'>WAIT / PANTAU</span>", "0 0 15px rgba(251, 191, 36, 0.4)", "#fbbf24" 
+    entry_val, border_glow, accent_color = "<span style='color:#fbbf24; font-weight:bold;'>WAIT / PANTAU</span>", "0 0 20px rgba(251, 191, 36, 0.6)", "#fbbf24" 
 
 # ==========================================
 # --- 1. HEADER DASHBOARD ---
@@ -400,7 +432,6 @@ else:
 st.markdown(f"""
 <div style='display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:10px;'>
     <div style='flex:1; min-width:250px;'>
-        <div style='display:inline-block; background:rgba(255,255,255,0.05); border:1px solid #334151; padding:2px 8px; border-radius:6px; margin-bottom:6px;'><span style='color:{ihsg_color}; font-size:0.75rem; font-weight:bold;'>{ihsg_text}</span></div>
         <div style="display: flex; align-items: center; gap: 8px;"><img src="https://assets.parqet.com/logos/symbol/{ticker_input}.JK?format=png" width="40" height="40" style="border-radius: 8px; background: white; padding: 2px;" onerror="this.style.display='none'"><div style='color:#f3f4f6; font-size: clamp(1.5rem, 3vw, 2.5rem); font-weight: 900; line-height: 1;'>{ticker_input}</div></div>
         <div style='color:#94a3b8; font-size:0.85rem; font-weight:bold; margin-top:2px;'>{data.get('name', '')}</div>
         <div style='font-size: 0.75rem; color: #64748b; margin-top: 4px; border-left: 2px solid #3b82f6; padding-left: 6px;'>
@@ -421,18 +452,20 @@ st.markdown(f"""
 </div>""", unsafe_allow_html=True)
 
 rr_bg = "linear-gradient(90deg, #1e3a8a, #3b82f6)" if rr_ratio >= 1.5 else ("linear-gradient(90deg, #991b1b, #ef4444)" if rr_ratio < 0.5 else "linear-gradient(90deg, #78350f, #d97706)")
+
+# --- KOTAK FINAL EXECUTION JUMBO (V36.5) ---
 st.markdown(f"""
-<div style='background: linear-gradient(145deg, #0f172a, #020617); border: 1px solid {accent_color}; padding: 10px; border-radius: 12px; box-shadow: {border_glow}; position: relative; overflow: hidden; margin-top: 8px; width: 100%;'>
-<div style='position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: {accent_color}; box-shadow: 0 0 10px {accent_color};'></div>
-<div style='color:#e5e7eb; font-size:0.75rem; font-weight:800; letter-spacing:1px; margin-bottom: 8px; text-align: center;'>FINAL EXECUTION {mode_label.upper()}</div>
+<div style='background: linear-gradient(145deg, #0f172a, #020617); border: 2px solid {accent_color}; padding: 20px; border-radius: 12px; box-shadow: {border_glow}; position: relative; overflow: hidden; margin-top: 15px; margin-bottom: 15px; width: 100%;'>
+<div style='position: absolute; top: 0; left: 0; width: 100%; height: 5px; background: {accent_color}; box-shadow: 0 0 15px {accent_color};'></div>
+<div style='color:#e5e7eb; font-size:1.2rem; font-weight:900; letter-spacing:2px; margin-bottom: 15px; text-align: center; text-transform: uppercase;'>🎯 FINAL EXECUTION {mode_label.upper()} 🎯</div>
 {warning_html}
-<div style='display:flex; flex-direction: column; gap: 4px; margin-top:4px;'>
-<div style='display:flex; justify-content: space-between; align-items:center; font-size: 0.85rem; border-bottom: 1px dashed #334151; padding-bottom: 2px;'><span style='color:#94a3b8;'>Entry Point</span> <span style='text-align: right;'>{entry_val}</span></div>
-<div style='display:flex; justify-content: space-between; align-items:center; font-size: 0.85rem; border-bottom: 1px dashed #334151; padding-bottom: 2px;'><span style='color:#94a3b8;'>Take Profit Target</span> <span style='color:#4ade80; font-weight:900;'>Rp{target_tp}</span></div>
-<div style='display:flex; justify-content: space-between; align-items:center; font-size: 0.85rem; border-bottom: 1px dashed #334151; padding-bottom: 2px;'><span style='color:#94a3b8;'>Stop Loss Limit</span> <span style='color:#f87171; font-weight:900;'>Rp{target_sl}</span></div>
-<div style='display:flex; justify-content: space-between; align-items:center; font-size: 0.85rem; border-bottom: 1px dashed #334151; padding-bottom: 2px;'><span style='color:#94a3b8;'>Maks Beli Aman</span> <span style='color:#4ade80; font-weight:900;'>{max_lot} LOT</span></div>
+<div style='display:flex; flex-direction: column; gap: 10px; margin-top:10px;'>
+<div style='display:flex; justify-content: space-between; align-items:center; font-size: 1.1rem; border-bottom: 1px dashed #334151; padding-bottom: 6px;'><span style='color:#94a3b8; font-weight:bold;'>Entry Point</span> <span style='text-align: right; font-size:1.2rem;'>{entry_val}</span></div>
+<div style='display:flex; justify-content: space-between; align-items:center; font-size: 1.1rem; border-bottom: 1px dashed #334151; padding-bottom: 6px;'><span style='color:#94a3b8; font-weight:bold;'>Take Profit Target</span> <span style='color:#4ade80; font-weight:900; font-size:1.2rem;'>Rp{target_tp}</span></div>
+<div style='display:flex; justify-content: space-between; align-items:center; font-size: 1.1rem; border-bottom: 1px dashed #334151; padding-bottom: 6px;'><span style='color:#94a3b8; font-weight:bold;'>Stop Loss Limit</span> <span style='color:#f87171; font-weight:900; font-size:1.2rem;'>Rp{target_sl}</span></div>
+<div style='display:flex; justify-content: space-between; align-items:center; font-size: 1.1rem; border-bottom: 1px dashed #334151; padding-bottom: 6px;'><span style='color:#94a3b8; font-weight:bold;'>Maks Beli Aman</span> <span style='color:#4ade80; font-weight:900; font-size:1.2rem;'>{max_lot} LOT</span></div>
 </div>
-<div style='background: {rr_bg}; color:white; padding:4px; border-radius:4px; text-align:center; font-weight:900; font-size:0.75rem; margin-top: 8px;'>⚖ R:R = 1 : {rr_ratio}</div>
+<div style='background: {rr_bg}; color:white; padding:10px; border-radius:6px; text-align:center; font-weight:900; font-size:1.1rem; margin-top: 15px; letter-spacing: 1px;'>⚖ RISK & REWARD RATIO = 1 : {rr_ratio}</div>
 </div>""", unsafe_allow_html=True)
 
 # ==========================================
@@ -460,7 +493,6 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# --- CHART FIX: MENAMBAHKAN BOLLINGER BANDS (UNTUK MA20) & VOLUME ---
 components.html(f"""
 <div style="border-radius: 10px; border: 1px solid #334151; overflow: hidden; background: #0f172a; margin-bottom: 10px; height: 480px;">
     <div id="tradingview_chart" style="height: 100%; width: 100%;"></div>
@@ -508,7 +540,9 @@ c1 = f"""<div style='display:flex; justify-content: space-between; align-items:c
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>PER (Valuasi):</span> <div style='text-align:right;'>{data.get('pe_str', 'N/A')}</div></div>
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>PBV (Aset):</span> <div style='text-align:right;'>{data.get('pbv_str', 'N/A')}</div></div>
 <div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>ROE (Kinerja):</span> <div style='text-align:right;'>{data.get('roe_str', 'N/A')}</div></div>
-<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>EPS (Laba):</span> <strong style='color:#f3f4f6;'>{data.get('eps_str', 'N/A')}</strong></div>"""
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8;'>EPS (Laba):</span> <strong style='color:#f3f4f6;'>{data.get('eps_str', 'N/A')}</strong></div>
+<hr style='margin: 4px 0; border: 0.5px dashed #38bdf8;'>
+<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#38bdf8; font-weight:bold;'>Harga Wajar:</span> <div style='text-align:right;'>{data.get('hw_str', 'N/A')}</div></div>"""
 b1 = render_luxury_box("💼 1. FUNDAMENTAL", c1, f"STATUS: {data.get('stat_funda', 'N/A')}", data.get('funda_bg', ''))
 
 c2 = f"""<div style='display:flex; justify-content: space-between; align-items:center;'><span style='color:#94a3b8; flex-shrink: 0;'>Pola Mata Elang:</span> <strong style='color:{data.get('candle_color', '#fff')}; text-align:right;'>{data.get('candle_pattern', 'N/A')}</strong></div>
